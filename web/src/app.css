@@ -1,0 +1,290 @@
+/* App shell. The board itself is canvas; everything here is chrome around it. */
+
+:root {
+  color-scheme: dark;
+  --bg: #101419;
+  --bg-2: #172029;
+  --text: #eef2f8;
+  --muted: #8f9cae;
+  --line: #26313d;
+  --shadow: rgba(0, 0, 0, 0.45);
+  --seat: #d9534f;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(120% 80% at 50% -20%, #1d2733 0%, var(--bg) 55%),
+    var(--bg);
+  color: var(--text);
+  font: 15px/1.45 system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  overscroll-behavior: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+#app {
+  height: 100dvh;
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: max(10px, env(safe-area-inset-top)) 12px max(12px, env(safe-area-inset-bottom));
+  max-width: 620px;
+  margin: 0 auto;
+}
+
+/* ---------- heads-up display ---------- */
+
+.hud {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 2px;
+}
+
+.turn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  padding: 7px 14px 7px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #1b2530, #151d26);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.turn-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--seat);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--seat) 25%, transparent);
+  transition: background 200ms ease, box-shadow 200ms ease;
+}
+
+.turn-name {
+  min-width: 4.5em;
+}
+
+.sound {
+  appearance: none;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #1b2530, #151d26);
+  color: var(--muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: border-color 160ms ease, color 160ms ease;
+}
+
+.sound:hover {
+  border-color: #3d4f63;
+  color: var(--text);
+}
+
+.sound:focus-visible {
+  outline: 2px solid #6cb6ff;
+  outline-offset: 3px;
+}
+
+.sound[data-muted='true'] {
+  color: #5c6878;
+}
+
+.dice {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 3px;
+  width: 42px;
+  height: 42px;
+  padding: 7px;
+  border-radius: 11px;
+  background: #f8f5ee;
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.14);
+}
+
+.dice i {
+  border-radius: 50%;
+  background: #2a2318;
+  opacity: 0;
+  transition: opacity 90ms ease;
+}
+
+/* Pip layouts, one rule per face. */
+.dice[data-face='1'] i:nth-child(5),
+.dice[data-face='2'] i:nth-child(1),
+.dice[data-face='2'] i:nth-child(9),
+.dice[data-face='3'] i:nth-child(1),
+.dice[data-face='3'] i:nth-child(5),
+.dice[data-face='3'] i:nth-child(9),
+.dice[data-face='4'] i:nth-child(1),
+.dice[data-face='4'] i:nth-child(3),
+.dice[data-face='4'] i:nth-child(7),
+.dice[data-face='4'] i:nth-child(9),
+.dice[data-face='5'] i:nth-child(1),
+.dice[data-face='5'] i:nth-child(3),
+.dice[data-face='5'] i:nth-child(5),
+.dice[data-face='5'] i:nth-child(7),
+.dice[data-face='5'] i:nth-child(9),
+.dice[data-face='6'] i:nth-child(1),
+.dice[data-face='6'] i:nth-child(3),
+.dice[data-face='6'] i:nth-child(4),
+.dice[data-face='6'] i:nth-child(6),
+.dice[data-face='6'] i:nth-child(7),
+.dice[data-face='6'] i:nth-child(9) {
+  opacity: 1;
+}
+
+.dice[data-face='0'] i {
+  opacity: 0.14;
+}
+
+.seat-die.tumbling .dice {
+  animation: dice-tumble 480ms linear;
+}
+
+@keyframes dice-tumble {
+  0% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(-14deg) scale(1.06); }
+  50% { transform: rotate(11deg) scale(0.96); }
+  75% { transform: rotate(-7deg) scale(1.03); }
+  100% { transform: rotate(0deg) scale(1); }
+}
+
+/* ---------- board stage ---------- */
+
+.stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  /* Grid items default to min-width: auto; without this the canvas pins the stage
+     to its old width and the board overflows a narrower phone screen. */
+  min-width: 0;
+}
+
+#board {
+  width: 100%;
+  height: 100%;
+  display: block;
+  touch-action: manipulation;
+}
+
+/* ---------- per-seat dice, in the spare space above and below the board ---------- */
+
+.seat-dice {
+  position: absolute;
+  left: var(--rail-inset, 0px);
+  right: var(--rail-inset, 0px);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;
+}
+
+/* Flush against the board edges: the spare space above and below the square. */
+.seat-dice[data-rail='top'] {
+  top: var(--rail-gap, 0px);
+  transform: translateY(-100%);
+}
+
+.seat-dice[data-rail='bottom'] {
+  top: calc(var(--rail-gap, 0px) + var(--board-side, 0px));
+}
+
+.seat-die {
+  appearance: none;
+  display: grid;
+  place-items: center;
+  padding: 7px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #1b2530, #151d26);
+  opacity: 0.3;
+  pointer-events: none;
+  transition:
+    opacity 220ms ease,
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    transform 220ms ease;
+}
+
+.seat-die .dice {
+  width: 55px;
+  height: 55px;
+  padding: 9px;
+  gap: 4px;
+  border-radius: 13px;
+}
+
+.seat-die[data-active='true'] {
+  opacity: 1;
+  cursor: pointer;
+  pointer-events: auto;
+  border-color: color-mix(in srgb, var(--seat) 70%, #2a3543);
+  box-shadow:
+    0 0 0 3px color-mix(in srgb, var(--seat) 22%, transparent),
+    0 6px 14px var(--shadow);
+  transform: translateY(-2px);
+}
+
+.seat-die[data-active='true']:active {
+  transform: translateY(-2px) scale(0.96);
+}
+
+.seat-die[data-active='true']:focus-visible {
+  outline: 2px solid #6cb6ff;
+  outline-offset: 3px;
+}
+
+/* Turn-start cue: the die hops twice, so a new player notices it is their go. */
+.seat-die.attention {
+  animation: seat-die-attention 900ms ease-out;
+}
+
+@keyframes seat-die-attention {
+  0% { transform: translateY(-2px) scale(1); }
+  18% { transform: translateY(-14px) scale(1.09); }
+  38% { transform: translateY(-2px) scale(1); }
+  58% { transform: translateY(-9px) scale(1.05); }
+  78% { transform: translateY(-2px) scale(1); }
+  100% { transform: translateY(-2px) scale(1); }
+}
+
+/* ---------- status line ---------- */
+
+.status {
+  min-height: 2.6em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  color: var(--muted);
+  font-size: 14px;
+  padding: 0 8px;
+}
+
+.status strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+  }
+}

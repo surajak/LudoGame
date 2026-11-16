@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Build output (rebuild with: npm run bundle)
+dist/
+
+# Reference material: third-party art, audio and screenshots. Never commit.
+Reference/
+LudoOpenCOde/
+
+# Test and smoke artifacts
+*.png.bak
+ui-*.png
+*.log
+
+# Local environment
+.env
+.env.*
+*.local
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
