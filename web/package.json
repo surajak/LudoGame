@@ -10,7 +10,7 @@
     "bundle": "npm run build && node scripts/bundle.mjs",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "node --test tests/",
+    "test": "node --test \"tests/**/*.test.ts\"",
     "test:fuzz": "node --test tests/simulation.test.ts",
     "typecheck": "tsc --noEmit"
   },
