@@ -144,9 +144,9 @@ export function renderBoard(
   ctx.stroke();
 
   drawYards(ctx, state, layout, options);
-  drawRing(ctx, layout);
-  drawHomeColumns(ctx, layout);
-  drawCentre(ctx, layout);
+  drawRing(ctx, state, layout);
+  drawHomeColumns(ctx, state, layout);
+  drawCentre(ctx, state, layout);
   drawMoveHints(ctx, layout, options);
   drawTokens(ctx, state, layout, options);
 }
@@ -221,7 +221,7 @@ function drawYards(
 ): void {
   const { cell } = layout;
 
-  for (const seat of [0, 1, 2, 3] as Seat[]) {
+  for (const seat of state.seats) {
     const origin = YARD_ORIGIN[seat];
     const colour = SEAT_COLOURS[seat];
     const x = layout.originX + origin.col * cell;
@@ -276,7 +276,11 @@ function drawYards(
   }
 }
 
-function drawRing(ctx: CanvasRenderingContext2D, layout: Layout): void {
+function drawRing(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  layout: Layout,
+): void {
   const { cell } = layout;
   const radius = cell * 0.16;
 
@@ -288,14 +292,16 @@ function drawRing(ctx: CanvasRenderingContext2D, layout: Layout): void {
     roundRect(ctx, rect.x, rect.y, rect.w, rect.h, radius);
 
     if (seat !== null) {
-      ctx.fillStyle = SEAT_COLOURS[seat];
-      ctx.globalAlpha = 0.92;
+      // A seat out of play keeps the square but loses its colour.
+      const inPlay = state.seats.includes(seat);
+      ctx.fillStyle = inPlay ? SEAT_COLOURS[seat] : CELL_FILL;
+      ctx.globalAlpha = inPlay ? 0.92 : 1;
       ctx.fill();
       ctx.globalAlpha = 1;
-      ctx.strokeStyle = 'rgba(255, 253, 248, 0.65)';
-      ctx.lineWidth = cell * 0.06;
+      ctx.strokeStyle = inPlay ? 'rgba(255, 253, 248, 0.65)' : CELL_STROKE;
+      ctx.lineWidth = cell * (inPlay ? 0.06 : 0.035);
       ctx.stroke();
-      drawStar(ctx, centre.x, centre.y, cell * 0.26, '#fffdf8');
+      if (inPlay) drawStar(ctx, centre.x, centre.y, cell * 0.26, '#fffdf8');
       return;
     }
 
@@ -317,6 +323,7 @@ function drawRing(ctx: CanvasRenderingContext2D, layout: Layout): void {
     if (index in entryAngle) {
       // Entry cell `START[seat] + 51` belongs to seat `(index + 1) / 13`.
       const seatAtEntry = (((index + 1) / 13) % 4) as Seat;
+      if (!state.seats.includes(seatAtEntry)) return;
       const size = cell * 0.3;
       ctx.save();
       ctx.translate(centre.x, centre.y);
@@ -334,10 +341,14 @@ function drawRing(ctx: CanvasRenderingContext2D, layout: Layout): void {
   });
 }
 
-function drawHomeColumns(ctx: CanvasRenderingContext2D, layout: Layout): void {
+function drawHomeColumns(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  layout: Layout,
+): void {
   const { cell } = layout;
 
-  for (const seat of [0, 1, 2, 3] as Seat[]) {
+  for (const seat of state.seats) {
     HOME[seat].forEach((cellRef) => {
       const rect = cellRect(layout, cellRef, 0.055);
       roundRect(ctx, rect.x, rect.y, rect.w, rect.h, cell * 0.16);
@@ -352,7 +363,11 @@ function drawHomeColumns(ctx: CanvasRenderingContext2D, layout: Layout): void {
   }
 }
 
-function drawCentre(ctx: CanvasRenderingContext2D, layout: Layout): void {
+function drawCentre(
+  ctx: CanvasRenderingContext2D,
+  state: GameState,
+  layout: Layout,
+): void {
   const { cell } = layout;
   const x = layout.originX + CENTRE.col * cell;
   const y = layout.originY + CENTRE.row * cell;
@@ -379,7 +394,7 @@ function drawCentre(ctx: CanvasRenderingContext2D, layout: Layout): void {
     ],
   };
 
-  for (const seat of [0, 1, 2, 3] as Seat[]) {
+  for (const seat of state.seats) {
     const [a, b] = corners[seat];
     ctx.beginPath();
     ctx.moveTo(a.x, a.y);

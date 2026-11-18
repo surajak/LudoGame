@@ -283,7 +283,7 @@ async function main() {
   let hintsShot = false;
   let sawAttention = false;
   let attentionShot = false;
-  for (let step = 0; step < 400; step += 1) {
+  for (let step = 0; step < 600; step += 1) {
     const now = await evaluate(`({
       ...globalThis.ludo.state(),
       attention: !!document.querySelector('.seat-die.attention'),
@@ -394,6 +394,20 @@ async function main() {
   if (two.dice.join(',') !== '0,2') fail(`2-player dice should be seats 0,2, got ${two.dice}`);
   if (two.tokens !== 8) fail(`2-player game should draw 8 pawns, got ${two.tokens}`);
   if (two.label !== 'Play 4 players') fail(`toggle should offer 4 players, got ${two.label}`);
+  const strayColours = await evaluate(`(() => {
+    const canvas = document.querySelector('#board');
+    const data = canvas.getContext('2d').getImageData(0, 0, canvas.width, canvas.height).data;
+    let green = 0, blue = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const r = data[i], g = data[i + 1], b = data[i + 2];
+      if (g > r * 1.18 && g > b * 1.1 && g > 60) green += 1;
+      if (b > r * 1.18 && b > g * 1.08 && b > 60) blue += 1;
+    }
+    return { green, blue };
+  })()`);
+  if (strayColours.green > 0 || strayColours.blue > 0) {
+    fail(`unused seats still drawn in 2-player mode: ${JSON.stringify(strayColours)}`);
+  }
   await clickActiveDie();
   await sleep(800);
   const twoRolls = await evaluate('globalThis.ludo.state().rollCount');
