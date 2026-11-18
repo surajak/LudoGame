@@ -222,9 +222,12 @@ body {
     transform 220ms ease;
 }
 
-/* Unused seats in a 2-player game have no die at all. */
+/* Unused seats in a 2-player game: keep the placeholder so the active die sits in the
+   same position as a 4-player game, but hide it and make it inert. */
 .seat-die[hidden] {
-  display: none;
+  display: grid;
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .seat-die .dice {

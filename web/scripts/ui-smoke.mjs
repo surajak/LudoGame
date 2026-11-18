@@ -392,6 +392,12 @@ async function main() {
   })()`);
   if (two.seats.join(',') !== '0,2') fail(`2-player game should use seats 0,2, got ${two.seats}`);
   if (two.dice.join(',') !== '0,2') fail(`2-player dice should be seats 0,2, got ${two.dice}`);
+  const dicePos = await evaluate(`(() => {
+    const box = (seat) => document.querySelector(\`.seat-die[data-seat="\${seat}"]\`).getBoundingClientRect();
+    return { r0: box(0).left, r1: box(1).left, y2: box(2).left, b3: box(3).left };
+  })()`);
+  if (dicePos.r0 >= dicePos.r1) fail('red die should stay in the left top slot');
+  if (dicePos.y2 <= dicePos.b3) fail(`yellow die should stay in its own right slot, not blue's (${dicePos.y2} <= ${dicePos.b3})`);
   if (two.tokens !== 8) fail(`2-player game should draw 8 pawns, got ${two.tokens}`);
   if (two.label !== 'Play 4 players') fail(`toggle should offer 4 players, got ${two.label}`);
   await clickActiveDie();
