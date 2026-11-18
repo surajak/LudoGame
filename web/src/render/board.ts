@@ -414,6 +414,7 @@ function drawTokens(
   for (const [key, placement] of placements) {
     const [seatPart, tokenPart] = key.split(':');
     const seat = Number(seatPart) as Seat;
+    if (!state.seats.includes(seat)) continue;
     const token = Number(tokenPart);
     const point = px(layout, options.animated?.get(key) ?? placement.units);
     const finished = state.players[seat].tokens[token] === DONE;

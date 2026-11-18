@@ -17,6 +17,7 @@ Classic Ludo for one device. No ads, no accounts, no network calls, no install.
 
 ## How to play
 
+0. Use **Play 2 players** / **Play 4 players** in the header to pick the mode. Two players sit on opposite corners. Switching starts a new game.
 1. Tap the die beside **your** home to roll. `Space` or `Enter` also roll.
 2. Roll a **6** to bring a pawn out of the yard.
 3. Tap one of the bouncing, enlarged pawns to move it. When only one move is legal, it plays itself.

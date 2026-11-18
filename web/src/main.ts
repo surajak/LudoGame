@@ -43,6 +43,7 @@ const turnName = required<HTMLElement>('#turn-name');
 const turnDot = required<HTMLElement>('#turn-dot');
 const status = required<HTMLElement>('#status');
 const soundButton = required<HTMLButtonElement>('#sound');
+const playersButton = required<HTMLButtonElement>('#players');
 
 const maybeCtx = canvas.getContext('2d');
 if (!maybeCtx) throw new Error('canvas 2d context unavailable');
@@ -54,7 +55,8 @@ const RAIL_SPACE = 164;
 /** Beat after each action, so a roll and the reply never land in the same instant. */
 const ACTION_PAUSE_MS = 500;
 
-let game: GameState = createGame({ seed: (Date.now() & 0x7fffffff) || 1, playerCount: 4 });
+let playerCount: 2 | 4 = 4;
+let game: GameState = createGame({ seed: (Date.now() & 0x7fffffff) || 1, playerCount });
 let legal: LegalMove[] = [];
 let layout: Layout = { cell: 0, originX: 0, originY: 0 };
 let message = 'Tap the dice to start.';
@@ -194,6 +196,36 @@ function stopAttentionLoop(): void {
   for (const holder of seatDies.values()) holder.classList.remove('attention');
 }
 
+/** The button always offers the other mode, so its label says what a click will do. */
+function syncPlayersButton(): void {
+  const next = playerCount === 4 ? 2 : 4;
+  playersButton.textContent = `Play ${next} players`;
+  playersButton.setAttribute('aria-label', `Start a new ${next}-player game`);
+  playersButton.title = `Start a new game with ${next} players`;
+}
+
+/** Switch between 2 and 4 players. Two-player games use the opposite diagonal. */
+function newGame(next: 2 | 4): void {
+  stopAttentionLoop();
+  window.clearTimeout(settleTimer);
+  window.clearTimeout(attentionTimer);
+  settleTimer = 0;
+  hops.clear();
+  ticked.clear();
+  busy = false;
+  autoMoves = 0;
+  lastFace = 0;
+  rolledSeat = null;
+
+  playerCount = next;
+  game = createGame({ seed: (Date.now() & 0x7fffffff) || 1, playerCount });
+  message = 'Tap the dice to start.';
+  legal = legalMoves(game);
+  syncPlayersButton();
+  syncHud();
+  startAttentionLoop();
+}
+
 function syncHud(): void {
   const over = game.phase === 'game-over';
   const winner = game.winner;
@@ -210,8 +242,9 @@ function syncHud(): void {
     rolledSeat = game.turn;
   }
 
-  // Only the seat to play shows a die; the rest stay dim with blank pips.
+  // Only seats in this game get a die; only the seat to play shows a face.
   for (const [seat, holder] of seatDies) {
+    holder.hidden = !game.seats.includes(seat);
     const active = !over && seat === shownSeat;
     holder.dataset.active = String(active);
     holder.disabled = !active;
@@ -392,8 +425,10 @@ function tokenAt(clientX: number, clientY: number): { seat: Seat; token: TokenIn
     if (distance > threshold) continue;
     if (best && best.distance <= distance) continue;
     const [seatPart, tokenPart] = key.split(':');
+    const seat = Number(seatPart) as Seat;
+    if (!game.seats.includes(seat)) continue;
     best = {
-      seat: Number(seatPart) as Seat,
+      seat,
       token: Number(tokenPart) as TokenIndex,
       distance,
     };
@@ -422,6 +457,11 @@ soundButton.addEventListener('click', () => {
 });
 syncSound();
 
+playersButton.addEventListener('click', () => {
+  newGame(playerCount === 4 ? 2 : 4);
+  play('tap');
+});
+
 window.addEventListener('keydown', (event) => {
   if (event.key >= '1' && event.key <= '4') {
     moveToken((Number(event.key) - 1) as TokenIndex);
@@ -438,6 +478,7 @@ window.addEventListener('resize', resize);
 buildSeatDice();
 resize();
 legal = legalMoves(game);
+syncPlayersButton();
 syncHud();
 startAttentionLoop();
 requestAnimationFrame(frame);
@@ -458,15 +499,17 @@ Object.assign(globalThis, {
     /** Token centres in CSS pixels, so tests can click exactly where a token is drawn. */
     tokenPoints: () => {
       const rect = canvas.getBoundingClientRect();
-      return [...tokenPlacements(game)].map(([key, placement]) => {
-        const [seat, token] = key.split(':').map(Number);
-        return {
-          seat,
-          token,
-          x: rect.left + layout.originX + placement.units.x * layout.cell,
-          y: rect.top + layout.originY + placement.units.y * layout.cell,
-        };
-      });
+      return [...tokenPlacements(game)]
+        .filter(([key]) => game.seats.includes(Number(key.split(':')[0]) as Seat))
+        .map(([key, placement]) => {
+          const [seat, token] = key.split(':').map(Number);
+          return {
+            seat,
+            token,
+            x: rect.left + layout.originX + placement.units.x * layout.cell,
+            y: rect.top + layout.originY + placement.units.y * layout.cell,
+          };
+        });
     },
   },
 });

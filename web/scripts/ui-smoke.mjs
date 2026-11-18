@@ -380,12 +380,33 @@ async function main() {
   if (phone.die < 52) fail(`seat die is only ${phone.die}px wide`);
   await send('Emulation.clearDeviceMetricsOverride');
 
+  // The player toggle starts a new game on opposite corners, with only two dice.
+  const two = await evaluate(`(() => {
+    document.querySelector('#players').click();
+    return {
+      seats: globalThis.ludo.state().seats,
+      dice: [...document.querySelectorAll('.seat-die')].filter((d) => !d.hidden).map((d) => Number(d.dataset.seat)),
+      tokens: globalThis.ludo.tokenPoints().length,
+      label: document.querySelector('#players').textContent,
+    };
+  })()`);
+  if (two.seats.join(',') !== '0,2') fail(`2-player game should use seats 0,2, got ${two.seats}`);
+  if (two.dice.join(',') !== '0,2') fail(`2-player dice should be seats 0,2, got ${two.dice}`);
+  if (two.tokens !== 8) fail(`2-player game should draw 8 pawns, got ${two.tokens}`);
+  if (two.label !== 'Play 4 players') fail(`toggle should offer 4 players, got ${two.label}`);
+  await clickActiveDie();
+  await sleep(800);
+  const twoRolls = await evaluate('globalThis.ludo.state().rollCount');
+  if (twoRolls < 1) fail('2-player game could not roll');
+  await screenshot('ui-2player.png');
+
   console.log(`ok   board ${boot.canvas.width}x${boot.canvas.height}, cell ${boot.canvas.layout.cell.toFixed(1)}px`);
   console.log(`ok   rolled ${finalState.turns} times, ${moved} tokens out of the yards`);
   console.log(`ok   clicked token ${point.token} on the canvas: ${before} -> ${after}`);
   console.log(`ok   ${autoMoves} single-option moves played without a tap`);
   console.log(`ok   turn-start bounce repeats while waiting (${pulsesBefore} -> ${pulsesAfter})`);
   console.log(`ok   4 seat dice, ${phone.die}px, ${phone.topGap}px/${phone.bottomGap}px from the board on a 390x844 phone`);
+  console.log(`ok   2-player mode uses diagonal seats ${two.seats.join(',')}: ${two.dice.length} dice, ${two.tokens} pawns`);
   console.log(`ok   screenshot ${shot}`);
 
   if (moved < 1) fail('no token ever left the yard; board interaction looks broken');

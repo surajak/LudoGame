@@ -222,6 +222,11 @@ body {
     transform 220ms ease;
 }
 
+/* Unused seats in a 2-player game have no die at all. */
+.seat-die[hidden] {
+  display: none;
+}
+
 .seat-die .dice {
   width: 55px;
   height: 55px;

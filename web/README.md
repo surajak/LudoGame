@@ -97,7 +97,7 @@ over. The UI smoke test accepts a URL, so the single file is verified the same w
 
 ## Ruleset
 
-Classic Ludo, 2–4 players, four tokens each, 52-square ring plus a 6-cell home column.
+Classic Ludo, 2–4 players, four tokens each, 52-square ring plus a 5-cell home column. The header button starts a new game in the other mode; 2-player games use the opposite diagonal (seats 0 and 2), and unused yards and dice are hidden.
 
 | Rule | Implementation |
 |---|---|
