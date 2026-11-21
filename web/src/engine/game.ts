@@ -129,9 +129,11 @@ function playMove(state: GameState, seat: Seat, token: TokenIndex): StepResult {
     };
   }
 
-  const earnedExtraRoll = move.captures.length > 0 || state.dice === 6;
+  // A capture, a six, or bringing a token home earns another roll.
+  const earnedExtraRoll =
+    move.captures.length > 0 || move.to === DONE || state.dice === 6;
   if (earnedExtraRoll) {
-    // Same seat rolls again. A six keeps the streak alive; a capture does not.
+    // Same seat rolls again. A six keeps the streak alive; a capture/home roll does not.
     return {
       state: {
         ...next,

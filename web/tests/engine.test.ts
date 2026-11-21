@@ -199,6 +199,15 @@ test('a roll with no legal move passes the turn', () => {
   assert.equal(result.state.dice, null);
 });
 
+test('bringing a token home earns another roll', () => {
+  const base = createGame({ seed: 1 });
+  const game = atMove(withTokens(base, 0, [56, 0, 0, 0]), 1);
+  const result = move(game, 0);
+  assert.equal(result.state.players[0].tokens[0], DONE);
+  assert.equal(result.state.phase, 'await-roll');
+  assert.equal(result.state.turn, 0, 'finishing a token earns another roll');
+});
+
 test('a six with no legal move still ends the turn', () => {
   const base = createGame({ seed: 1 });
   // Everything is home; a six cannot enter the board from the yard.

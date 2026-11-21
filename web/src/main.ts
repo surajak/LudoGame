@@ -130,9 +130,14 @@ function describe(events: readonly GameEvent[], state: GameState): string {
           const victims = event.captures.map((ref) => SEAT_NAMES[ref.seat]).join(' and ');
           return `${SEAT_NAMES[event.seat]} captured ${victims} — roll again.`;
         }
-        return event.to === DONE
-          ? `${SEAT_NAMES[event.seat]} brought a token home.`
-          : `${SEAT_NAMES[event.seat]} moved.`;
+        if (event.to === DONE) {
+          const again =
+            state.phase === 'await-roll' && state.turn === event.seat && state.winner === null
+              ? ' — roll again.'
+              : '.';
+          return `${SEAT_NAMES[event.seat]} brought a token home${again}`;
+        }
+        return `${SEAT_NAMES[event.seat]} moved.`;
       case 'rolled':
         if (state.phase === 'await-move') {
           return `${SEAT_NAMES[event.seat]} rolled <strong>${event.dice}</strong>. Pick a token.`;
@@ -253,6 +258,7 @@ function syncHud(): void {
   }
 
   status.innerHTML = message;
+  status.dataset.win = over ? 'true' : 'false';
 }
 
 function roll(): void {

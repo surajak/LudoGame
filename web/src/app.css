@@ -290,6 +290,23 @@ body {
   font-weight: 600;
 }
 
+.status[data-win='true'] {
+  color: var(--text);
+  animation: win-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes win-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.88;
+    transform: scale(1.03);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   * {
     transition-duration: 1ms !important;
