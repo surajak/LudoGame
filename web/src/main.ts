@@ -45,6 +45,7 @@ const turnDot = required<HTMLElement>('#turn-dot');
 const status = required<HTMLElement>('#status');
 const soundButton = required<HTMLButtonElement>('#sound');
 const playersButton = required<HTMLButtonElement>('#players');
+const modeScreen = required<HTMLElement>('#mode-screen');
 
 const maybeCtx = canvas.getContext('2d');
 if (!maybeCtx) throw new Error('canvas 2d context unavailable');
@@ -186,9 +187,11 @@ function apply(result: { state: GameState; events: readonly GameEvent[] }): void
   scheduleCpu();
 }
 
-/** True while the computer seat is to act. */
+/** True while the computer seat is to act and the board is in view. */
 function isCpuTurn(): boolean {
-  return cpuSeat !== null && game.turn === cpuSeat && game.phase !== 'game-over';
+  return (
+    cpuSeat !== null && game.turn === cpuSeat && game.phase !== 'game-over' && modeScreen.hidden
+  );
 }
 
 /** Queue the computer's next action. Safe to call after any state change. */
@@ -244,22 +247,24 @@ function stopAttentionLoop(): void {
   for (const holder of seatDies.values()) holder.classList.remove('attention');
 }
 
-/** The mode the button will switch to: 4 → 2 → computer → 4. */
-function nextMode(): 1 | 2 | 4 {
-  const current = cpuSeat !== null ? 1 : playerCount;
-  return current === 4 ? 2 : current === 2 ? 1 : 4;
+/** Show the mode picker and hold the game until a mode is chosen. */
+function showModes(): void {
+  window.clearTimeout(cpuTimer);
+  cpuTimer = 0;
+  stopAttentionLoop();
+  modeScreen.hidden = false;
+  modeScreen.querySelector<HTMLButtonElement>('[data-mode]')?.focus();
 }
 
-/** The button always offers the other mode, so its label says what a click will do. */
-function syncPlayersButton(): void {
-  const next = nextMode();
-  playersButton.textContent = next === 1 ? 'Play vs computer' : `Play ${next} players`;
-  playersButton.setAttribute(
-    'aria-label',
-    next === 1 ? 'Start a game against the computer' : `Start a new ${next}-player game`,
-  );
-  playersButton.title =
-    next === 1 ? 'Start a single-player game against the computer' : `Start a new game with ${next} players`;
+/** Start the chosen mode and put the board in view. */
+function startMode(mode: 1 | 2 | 4): void {
+  modeScreen.hidden = true;
+  newGame(mode);
+}
+
+/** The mode currently on the board, for reopening the picker. */
+function currentMode(): 1 | 2 | 4 {
+  return cpuSeat !== null ? 1 : playerCount;
 }
 
 /**
@@ -285,7 +290,6 @@ function newGame(next: 1 | 2 | 4): void {
   game = createGame({ seed: (Date.now() & 0x7fffffff) || 1, playerCount });
   message = 'Tap the dice to start.';
   legal = legalMoves(game);
-  syncPlayersButton();
   syncHud();
   startAttentionLoop();
   scheduleCpu();
@@ -527,11 +531,22 @@ soundButton.addEventListener('click', () => {
 syncSound();
 
 playersButton.addEventListener('click', () => {
-  newGame(nextMode());
+  showModes();
   play('tap');
 });
 
+for (const button of modeScreen.querySelectorAll<HTMLButtonElement>('[data-mode]')) {
+  button.addEventListener('click', () => {
+    play('tap');
+    startMode(Number(button.dataset.mode) as 1 | 2 | 4);
+  });
+}
+
 window.addEventListener('keydown', (event) => {
+  if (!modeScreen.hidden) {
+    if (event.key === 'Escape') startMode(currentMode());
+    return;
+  }
   if (event.key >= '1' && event.key <= '4') {
     moveToken((Number(event.key) - 1) as TokenIndex);
     return;
@@ -547,9 +562,8 @@ window.addEventListener('resize', resize);
 buildSeatDice();
 resize();
 legal = legalMoves(game);
-syncPlayersButton();
 syncHud();
-startAttentionLoop();
+showModes();
 requestAnimationFrame(frame);
 
 // Expose a tiny debug handle for scripted checks; no network, no globals beyond this.

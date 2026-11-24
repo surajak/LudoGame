@@ -16,7 +16,7 @@
           <span class="turn-name" id="turn-name">Red</span>
         </div>
 
-        <button class="sound" id="players" type="button" title="Start a new game with two players">Play 2 players</button>
+        <button class="sound" id="players" type="button" title="Choose a game mode" aria-label="Choose a game mode">Change mode</button>
 
         <button class="sound" id="sound" type="button" aria-pressed="true">Sound on</button>
       </header>
@@ -29,6 +29,25 @@
 
       <footer class="status" id="status" aria-live="polite">Tap the dice to start.</footer>
     </main>
+
+    <div class="mode-screen" id="mode-screen" role="dialog" aria-modal="true" aria-labelledby="mode-title">
+      <div class="mode-card">
+        <h1 id="mode-title">Ludo</h1>
+        <p>Choose a game</p>
+        <button type="button" class="mode" data-mode="1">
+          <strong>1 player</strong>
+          <span>You against the computer</span>
+        </button>
+        <button type="button" class="mode" data-mode="2">
+          <strong>2 players</strong>
+          <span>Hotseat, opposite corners</span>
+        </button>
+        <button type="button" class="mode" data-mode="4">
+          <strong>4 players</strong>
+          <span>Hotseat, all four corners</span>
+        </button>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

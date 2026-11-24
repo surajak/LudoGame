@@ -206,6 +206,27 @@ async function main() {
     fail(`face six should be red, got rgb(${cube.rgb.join(',')})`);
   }
 
+  // The mode picker gates the board: nothing rolls until a mode is chosen.
+  const picker = await evaluate(`(() => {
+    const screen = document.querySelector('#mode-screen');
+    return {
+      open: !screen.hidden,
+      modes: [...screen.querySelectorAll('[data-mode]')].map((b) => b.dataset.mode).join(','),
+      rollCount: globalThis.ludo.state().rollCount,
+    };
+  })()`);
+  if (!picker.open) fail('mode picker should be open on load');
+  if (picker.modes !== '1,2,4') fail(`mode picker should offer 1,2,4 players, got ${picker.modes}`);
+  if (picker.rollCount !== 0) fail('the game rolled before a mode was chosen');
+
+  const started = await evaluate(`(() => {
+    const screen = document.querySelector('#mode-screen');
+    screen.querySelector('[data-mode="4"]').click();
+    return { open: !screen.hidden, seats: globalThis.ludo.state().seats.join(',') };
+  })()`);
+  if (started.open) fail('the picker should close when a mode is chosen');
+  if (started.seats !== '0,1,2,3') fail(`4-player mode should seat 0,1,2,3, got ${started.seats}`);
+
   // The mute control must actually toggle, and survive a second click.
   const sound = await evaluate(`(() => {
     const button = document.querySelector('#sound');
@@ -393,16 +414,22 @@ async function main() {
   if (phone.die < 52) fail(`seat die is only ${phone.die}px wide`);
   await send('Emulation.clearDeviceMetricsOverride');
 
-  // The player toggle starts a new game on opposite corners, with only two dice.
+  // Change mode reopens the picker, then two players start on opposite corners.
   const two = await evaluate(`(() => {
     document.querySelector('#players').click();
+    const screen = document.querySelector('#mode-screen');
+    const opened = !screen.hidden;
+    screen.querySelector('[data-mode="2"]').click();
     return {
+      opened,
+      closed: screen.hidden,
       seats: globalThis.ludo.state().seats,
       dice: [...document.querySelectorAll('.seat-die')].filter((d) => !d.hidden).map((d) => Number(d.dataset.seat)),
       tokens: globalThis.ludo.tokenPoints().length,
-      label: document.querySelector('#players').textContent,
     };
   })()`);
+  if (!two.opened) fail('Change mode should open the picker');
+  if (!two.closed) fail('picking 2 players should close the picker');
   if (two.seats.join(',') !== '0,2') fail(`2-player game should use seats 0,2, got ${two.seats}`);
   if (two.dice.join(',') !== '0,2') fail(`2-player dice should be seats 0,2, got ${two.dice}`);
   const dicePos = await evaluate(`(() => {
@@ -412,27 +439,30 @@ async function main() {
   if (dicePos.r0 >= dicePos.r1) fail('red die should stay in the left top slot');
   if (dicePos.y2 <= dicePos.b3) fail(`yellow die should stay in its own right slot, not blue's (${dicePos.y2} <= ${dicePos.b3})`);
   if (two.tokens !== 8) fail(`2-player game should draw 8 pawns, got ${two.tokens}`);
-  if (two.label !== 'Play vs computer') fail(`toggle should offer the computer, got ${two.label}`);
   await clickActiveDie();
   await sleep(800);
   const twoRolls = await evaluate('globalThis.ludo.state().rollCount');
   if (twoRolls < 1) fail('2-player game could not roll');
   await screenshot('ui-2player.png');
 
-  // Next click starts a single-player game: red against the computer on yellow.
+  // Next pick is single-player: red against the computer on yellow.
   const one = await evaluate(`(() => {
     document.querySelector('#players').click();
+    const screen = document.querySelector('#mode-screen');
+    const opened = !screen.hidden;
+    screen.querySelector('[data-mode="1"]').click();
     return {
+      opened,
+      closed: screen.hidden,
       seats: globalThis.ludo.state().seats,
       cpu: globalThis.ludo.cpuSeat(),
-      label: document.querySelector('#players').textContent,
       dice: [...document.querySelectorAll('.seat-die')].filter((d) => !d.hidden).length,
       tokens: globalThis.ludo.tokenPoints().length,
     };
   })()`);
+  if (!one.opened || !one.closed) fail('picker did not open and close for single-player');
   if (one.seats.join(',') !== '0,2') fail(`single-player game should use seats 0,2, got ${one.seats}`);
   if (one.cpu !== 2) fail(`computer should play seat 2, got ${one.cpu}`);
-  if (one.label !== 'Play 4 players') fail(`toggle should offer 4 players, got ${one.label}`);
   if (one.dice !== 2 || one.tokens !== 8) {
     fail(`single-player board should hold 2 dice and 8 pawns, got ${one.dice}/${one.tokens}`);
   }
