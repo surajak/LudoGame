@@ -427,14 +427,14 @@ function tokenAt(clientX: number, clientY: number): { seat: Seat; token: TokenIn
   const x = clientX - rect.left;
   const y = clientY - rect.top;
   const placements = tokenPlacements(game);
-  const threshold = layout.cell * 0.52;
 
   let best: { seat: Seat; token: TokenIndex; distance: number } | null = null;
   for (const [key, placement] of placements) {
     const px = layout.originX + placement.units.x * layout.cell;
-    const py = layout.originY + placement.units.y * layout.cell;
+    // The pin stands above its cell, so aim at the body, not the tip.
+    const py = layout.originY + placement.units.y * layout.cell - layout.cell * 0.5;
     const distance = Math.hypot(px - x, py - y);
-    if (distance > threshold) continue;
+    if (distance > layout.cell * 0.62) continue;
     if (best && best.distance <= distance) continue;
     const [seatPart, tokenPart] = key.split(':');
     const seat = Number(seatPart) as Seat;

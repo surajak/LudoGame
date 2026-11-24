@@ -423,8 +423,8 @@ function drawTokens(
     const active = seat === state.turn && state.phase === 'await-move' && isMovable;
     // A playable pawn is drawn larger and bounces with the same rhythm as its die.
     const hop = active && options.animate ? attentionHop(options.time) : 0;
-    // 20% up on the old 0.31/0.37/0.2 radii.
-    const radius = cell * (finished ? 0.24 : active ? 0.44 : 0.37);
+    // Pin half-width. Height runs 3.1x this above the cell point.
+    const radius = cell * (finished ? 0.19 : active ? 0.34 : 0.29);
 
     // Highlight ring under movable tokens.
     if (active) {
@@ -443,8 +443,9 @@ function drawTokens(
 }
 
 /**
- * Ludo counter: a domed white chip with a black rim and the player's colour inside.
- * `lift` raises the chip while the shadow stays on the ground and tightens.
+ * Ludo counter: a map-pin shape in the player's colour, white hole in the head, dark
+ * outline. The tip sits on the board point; `lift` raises the pin while the shadow
+ * stays on the ground and tightens.
  */
 function drawPawn(
   ctx: CanvasRenderingContext2D,
@@ -456,72 +457,41 @@ function drawPawn(
   lift = 0,
 ): void {
   const R = radius;
-  const cy = y - lift;
+  const tipY = y - lift;
+  const headY = tipY - R * 2.1;
   const air = Math.min(1, lift / (cell * 0.4));
 
-  // Ground contact shadow, smaller and fainter the higher the chip goes.
+  // Ground contact shadow, smaller and fainter the higher the pin goes.
   ctx.beginPath();
   ctx.ellipse(
-    x + R * 0.08,
-    y + R * 0.28,
-    R * (0.92 - air * 0.22),
-    R * (0.34 - air * 0.12),
+    x,
+    y + R * 0.18,
+    R * (0.62 - air * 0.18),
+    R * (0.2 - air * 0.06),
     0,
     0,
     Math.PI * 2,
   );
-  ctx.fillStyle = `rgba(18, 14, 8, ${(0.26 - air * 0.12).toFixed(3)})`;
+  ctx.fillStyle = `rgba(18, 14, 8, ${(0.3 - air * 0.12).toFixed(3)})`;
   ctx.fill();
 
-  // Black rim.
+  // Head circle blended into a tapered tip, one silhouette.
   ctx.beginPath();
-  ctx.arc(x, cy, R, 0, Math.PI * 2);
-  ctx.fillStyle = '#14110c';
-  ctx.fill();
-
-  // White body, lit from the upper left so the chip reads as raised.
-  const body = R - R * 0.085;
-  ctx.beginPath();
-  ctx.arc(x, cy, body, 0, Math.PI * 2);
-  const white = ctx.createRadialGradient(
-    x - body * 0.35,
-    cy - body * 0.4,
-    body * 0.1,
-    x,
-    cy,
-    body,
-  );
-  white.addColorStop(0, '#fffefb');
-  white.addColorStop(0.72, '#fffdf8');
-  white.addColorStop(1, '#ddd7ca');
-  ctx.fillStyle = white;
-  ctx.fill();
-
-  // Player colour inside, same dome light plus a thin rim.
-  const inner = R * 0.6;
-  ctx.beginPath();
-  ctx.arc(x, cy, inner, 0, Math.PI * 2);
+  ctx.moveTo(x, tipY);
+  ctx.bezierCurveTo(x - R * 0.5, tipY - R * 0.9, x - R, headY + R * 0.75, x - R, headY);
+  ctx.arc(x, headY, R, Math.PI, 0);
+  ctx.bezierCurveTo(x + R, headY + R * 0.75, x + R * 0.5, tipY - R * 0.9, x, tipY);
+  ctx.closePath();
   ctx.fillStyle = colour;
   ctx.fill();
-
-  const dome = ctx.createRadialGradient(
-    x - inner * 0.35,
-    cy - inner * 0.4,
-    inner * 0.08,
-    x,
-    cy,
-    inner * 1.08,
-  );
-  dome.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
-  dome.addColorStop(0.45, 'rgba(255, 255, 255, 0.06)');
-  dome.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
-  ctx.fillStyle = dome;
-  ctx.fill();
-
-  ctx.beginPath();
-  ctx.arc(x, cy, inner, 0, Math.PI * 2);
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
-  ctx.lineWidth = Math.max(1, R * 0.03);
+  ctx.lineWidth = Math.max(1, R * 0.11);
+  ctx.strokeStyle = '#14110c';
   ctx.stroke();
+
+  // White hole in the head.
+  ctx.beginPath();
+  ctx.arc(x, headY, R * 0.46, 0, Math.PI * 2);
+  ctx.fillStyle = '#fffdf8';
+  ctx.fill();
 }
 
