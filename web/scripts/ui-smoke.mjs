@@ -193,6 +193,19 @@ async function main() {
   const fills = Math.abs(boot.canvas.layout.cell * 15 - boot.canvas.width * 0.98) < 2;
   if (!fills) fail('board does not fill the canvas');
 
+  // The die is a real CSS cube: six faces, 3D preserved, and face six painted red.
+  const cube = await evaluate(`(() => {
+    const die = document.querySelector('.seat-die[data-active="true"] .dice');
+    const six = die.querySelector('.dice-face[data-pips="6"]');
+    const rgb = getComputedStyle(six).backgroundColor.match(/\\d+/g).map(Number);
+    return { faces: die.querySelectorAll('.dice-face').length, threeD: getComputedStyle(die).transformStyle, rgb };
+  })()`);
+  if (cube.faces !== 6) fail(`die should have 6 faces, got ${cube.faces}`);
+  if (cube.threeD !== 'preserve-3d') fail(`die should be a 3D cube, got ${cube.threeD}`);
+  if (!(cube.rgb[0] > cube.rgb[1] * 1.5 && cube.rgb[0] > cube.rgb[2] * 1.5)) {
+    fail(`face six should be red, got rgb(${cube.rgb.join(',')})`);
+  }
+
   // The mute control must actually toggle, and survive a second click.
   const sound = await evaluate(`(() => {
     const button = document.querySelector('#sound');

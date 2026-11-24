@@ -104,64 +104,94 @@ body {
   color: #5c6878;
 }
 
+/* ---------- dice: a real 3D cube, pips printed on all six faces ---------- */
+
 .dice {
+  --die-size: 42px;
+  position: relative;
+  width: var(--die-size);
+  height: var(--die-size);
+  transform-style: preserve-3d;
+  transform: rotateX(0deg) rotateY(0deg);
+  transition: transform 300ms ease-out;
+}
+
+.dice-face {
+  position: absolute;
+  inset: 0;
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 3px;
-  width: 42px;
-  height: 42px;
   padding: 7px;
   border-radius: 11px;
-  background: #f8f5ee;
+  background: var(--die-face, #f8f5ee);
   box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.14);
+  backface-visibility: hidden;
 }
 
-.dice i {
+.dice-face i {
   border-radius: 50%;
-  background: #2a2318;
+  background: var(--die-pip, #2a2318);
   opacity: 0;
-  transition: opacity 90ms ease;
 }
 
-/* Pip layouts, one rule per face. */
-.dice[data-face='1'] i:nth-child(5),
-.dice[data-face='2'] i:nth-child(1),
-.dice[data-face='2'] i:nth-child(9),
-.dice[data-face='3'] i:nth-child(1),
-.dice[data-face='3'] i:nth-child(5),
-.dice[data-face='3'] i:nth-child(9),
-.dice[data-face='4'] i:nth-child(1),
-.dice[data-face='4'] i:nth-child(3),
-.dice[data-face='4'] i:nth-child(7),
-.dice[data-face='4'] i:nth-child(9),
-.dice[data-face='5'] i:nth-child(1),
-.dice[data-face='5'] i:nth-child(3),
-.dice[data-face='5'] i:nth-child(5),
-.dice[data-face='5'] i:nth-child(7),
-.dice[data-face='5'] i:nth-child(9),
-.dice[data-face='6'] i:nth-child(1),
-.dice[data-face='6'] i:nth-child(3),
-.dice[data-face='6'] i:nth-child(4),
-.dice[data-face='6'] i:nth-child(6),
-.dice[data-face='6'] i:nth-child(7),
-.dice[data-face='6'] i:nth-child(9) {
+/* Faces 1..6 in DOM order, opposite pairs summing to 7, each lifted to half the depth. */
+.dice-face:nth-child(1) {
+  transform: rotateY(0deg) translateZ(calc(var(--die-size) / 2));
+}
+.dice-face:nth-child(2) {
+  transform: rotateY(90deg) translateZ(calc(var(--die-size) / 2));
+}
+.dice-face:nth-child(3) {
+  transform: rotateX(90deg) translateZ(calc(var(--die-size) / 2));
+}
+.dice-face:nth-child(4) {
+  transform: rotateX(-90deg) translateZ(calc(var(--die-size) / 2));
+}
+.dice-face:nth-child(5) {
+  transform: rotateY(-90deg) translateZ(calc(var(--die-size) / 2));
+}
+.dice-face:nth-child(6) {
+  transform: rotateY(180deg) translateZ(calc(var(--die-size) / 2));
+}
+
+/* Settled orientation per rolled face. The extra full turn keeps every roll spinning. */
+.dice[data-face='1'] { transform: rotateX(0deg) rotateY(0deg); }
+.dice[data-face='2'] { transform: rotateX(0deg) rotateY(-450deg); }
+.dice[data-face='3'] { transform: rotateX(-450deg) rotateY(0deg); }
+.dice[data-face='4'] { transform: rotateX(450deg) rotateY(0deg); }
+.dice[data-face='5'] { transform: rotateX(0deg) rotateY(450deg); }
+.dice[data-face='6'] { transform: rotateX(360deg) rotateY(180deg); }
+
+/* Six is the lucky face: red plate, pale pips. */
+.dice-face[data-pips='6'] {
+  --die-face: #d9534f;
+  --die-pip: #fff4ec;
+}
+
+/* Pip layouts, one rule per face value. */
+.dice-face[data-pips='1'] i:nth-child(5),
+.dice-face[data-pips='2'] i:nth-child(1),
+.dice-face[data-pips='2'] i:nth-child(9),
+.dice-face[data-pips='3'] i:nth-child(1),
+.dice-face[data-pips='3'] i:nth-child(5),
+.dice-face[data-pips='3'] i:nth-child(9),
+.dice-face[data-pips='4'] i:nth-child(1),
+.dice-face[data-pips='4'] i:nth-child(3),
+.dice-face[data-pips='4'] i:nth-child(7),
+.dice-face[data-pips='4'] i:nth-child(9),
+.dice-face[data-pips='5'] i:nth-child(1),
+.dice-face[data-pips='5'] i:nth-child(3),
+.dice-face[data-pips='5'] i:nth-child(5),
+.dice-face[data-pips='5'] i:nth-child(7),
+.dice-face[data-pips='5'] i:nth-child(9),
+.dice-face[data-pips='6'] i:nth-child(1),
+.dice-face[data-pips='6'] i:nth-child(3),
+.dice-face[data-pips='6'] i:nth-child(4),
+.dice-face[data-pips='6'] i:nth-child(6),
+.dice-face[data-pips='6'] i:nth-child(7),
+.dice-face[data-pips='6'] i:nth-child(9) {
   opacity: 1;
-}
-
-.dice[data-face='0'] i {
-  opacity: 0.14;
-}
-
-.seat-die.tumbling .dice {
-  animation: dice-tumble 480ms linear;
-}
-
-@keyframes dice-tumble {
-  0% { transform: rotate(0deg) scale(1); }
-  25% { transform: rotate(-14deg) scale(1.06); }
-  50% { transform: rotate(11deg) scale(0.96); }
-  75% { transform: rotate(-7deg) scale(1.03); }
-  100% { transform: rotate(0deg) scale(1); }
 }
 
 /* ---------- board stage ---------- */
@@ -213,10 +243,9 @@ body {
   border: 1px solid var(--line);
   border-radius: 16px;
   background: linear-gradient(180deg, #1b2530, #151d26);
-  opacity: 0.3;
+  perspective: 320px;
   pointer-events: none;
   transition:
-    opacity 220ms ease,
     border-color 220ms ease,
     box-shadow 220ms ease,
     transform 220ms ease;
@@ -231,11 +260,19 @@ body {
 }
 
 .seat-die .dice {
-  width: 55px;
-  height: 55px;
+  --die-size: 55px;
+}
+
+.seat-die .dice-face {
   padding: 9px;
   gap: 4px;
   border-radius: 13px;
+}
+
+/* A seat that is not to play keeps its die, dimmed to a grey cube. */
+.seat-die:not([data-active='true']) .dice-face {
+  --die-face: #2a3543;
+  --die-pip: #3d4a5a;
 }
 
 .seat-die[data-active='true'] {

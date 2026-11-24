@@ -102,7 +102,14 @@ function buildSeatDice(): void {
       const die = document.createElement('span');
       die.className = 'dice';
       die.dataset.face = '0';
-      for (let pip = 0; pip < 9; pip += 1) die.append(document.createElement('i'));
+      // Six cube faces, pips 1..6; CSS places them in 3D and rotates the cube.
+      for (let pips = 1; pips <= 6; pips += 1) {
+        const face = document.createElement('span');
+        face.className = 'dice-face';
+        face.dataset.pips = String(pips);
+        for (let pip = 0; pip < 9; pip += 1) face.append(document.createElement('i'));
+        die.append(face);
+      }
       holder.append(die);
 
       holder.addEventListener('click', () => {
@@ -274,17 +281,16 @@ function roll(): void {
 
   // Tumble before revealing: cycle cosmetic faces, then apply the engine's real roll.
   // Math.random here only picks which face to show — the dice value is still the engine's.
+  // Each face change is a >= 1 full turn, so the cube reads as rolling.
   busy = true;
   const holder = seatDies.get(game.turn);
   const die = holder?.firstElementChild as HTMLElement | undefined;
-  holder?.classList.add('tumbling');
   const spin = window.setInterval(() => {
     if (die) die.dataset.face = String(1 + Math.floor(Math.random() * 6));
   }, 70);
 
   window.setTimeout(() => {
     window.clearInterval(spin);
-    holder?.classList.remove('tumbling');
     busy = false;
     apply(step(game, { type: 'roll' }));
     // Let the rolled face read before the lone legal token walks on its own.
