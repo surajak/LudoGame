@@ -443,8 +443,8 @@ function drawTokens(
 }
 
 /**
- * Classic Ludo counter: a white disc with a black rim and the player's colour inside.
- * `lift` raises the disc while the shadow stays on the ground and tightens.
+ * Ludo counter: a domed white chip with a black rim and the player's colour inside.
+ * `lift` raises the chip while the shadow stays on the ground and tightens.
  */
 function drawPawn(
   ctx: CanvasRenderingContext2D,
@@ -459,7 +459,7 @@ function drawPawn(
   const cy = y - lift;
   const air = Math.min(1, lift / (cell * 0.4));
 
-  // Ground contact shadow, smaller and fainter the higher the disc goes.
+  // Ground contact shadow, smaller and fainter the higher the chip goes.
   ctx.beginPath();
   ctx.ellipse(
     x + R * 0.08,
@@ -473,19 +473,55 @@ function drawPawn(
   ctx.fillStyle = `rgba(18, 14, 8, ${(0.26 - air * 0.12).toFixed(3)})`;
   ctx.fill();
 
-  // White disc with a black rim.
+  // Black rim.
   ctx.beginPath();
   ctx.arc(x, cy, R, 0, Math.PI * 2);
-  ctx.fillStyle = '#fffdf8';
+  ctx.fillStyle = '#14110c';
   ctx.fill();
-  ctx.lineWidth = Math.max(1.1, R * 0.16);
-  ctx.strokeStyle = '#14110c';
-  ctx.stroke();
 
-  // Player colour inside.
+  // White body, lit from the upper left so the chip reads as raised.
+  const body = R - R * 0.085;
   ctx.beginPath();
-  ctx.arc(x, cy, R * 0.56, 0, Math.PI * 2);
+  ctx.arc(x, cy, body, 0, Math.PI * 2);
+  const white = ctx.createRadialGradient(
+    x - body * 0.35,
+    cy - body * 0.4,
+    body * 0.1,
+    x,
+    cy,
+    body,
+  );
+  white.addColorStop(0, '#fffefb');
+  white.addColorStop(0.72, '#fffdf8');
+  white.addColorStop(1, '#ddd7ca');
+  ctx.fillStyle = white;
+  ctx.fill();
+
+  // Player colour inside, same dome light plus a thin rim.
+  const inner = R * 0.6;
+  ctx.beginPath();
+  ctx.arc(x, cy, inner, 0, Math.PI * 2);
   ctx.fillStyle = colour;
   ctx.fill();
+
+  const dome = ctx.createRadialGradient(
+    x - inner * 0.35,
+    cy - inner * 0.4,
+    inner * 0.08,
+    x,
+    cy,
+    inner * 1.08,
+  );
+  dome.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+  dome.addColorStop(0.45, 'rgba(255, 255, 255, 0.06)');
+  dome.addColorStop(1, 'rgba(0, 0, 0, 0.3)');
+  ctx.fillStyle = dome;
+  ctx.fill();
+
+  ctx.beginPath();
+  ctx.arc(x, cy, inner, 0, Math.PI * 2);
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.25)';
+  ctx.lineWidth = Math.max(1, R * 0.03);
+  ctx.stroke();
 }
 
