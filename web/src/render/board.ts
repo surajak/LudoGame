@@ -443,9 +443,9 @@ function drawTokens(
 }
 
 /**
- * A wooden pawn in the classic Ludo shape: flared foot, pinched waist, round head, with
- * a highlight on top so it reads as a solid object. Drawn from the ground point upward;
- * `lift` raises the body while the shadow stays on the ground and tightens.
+ * Classic Ludo pawn: sphere on top, cone below, connected at the neck.
+ * Drawn from the ground point upward; `lift` raises the body while the shadow stays
+ * on the ground and tightens.
  */
 function drawPawn(
   ctx: CanvasRenderingContext2D,
@@ -458,12 +458,12 @@ function drawPawn(
 ): void {
   const R = radius;
   const base = y - lift;
-  const footRy = R * 0.38;
-  const bodyH = R * 1.05;
-  const neckY = base - bodyH;
-  const neckR = R * 0.22;
-  const headR = R * 0.42;
-  const headY = neckY - headR * 0.26;
+  const footRy = R * 0.34;
+  const coneH = R * 1.18;
+  const neckY = base - coneH;
+  const neckR = R * 0.24;
+  const headR = R * 0.44;
+  const headY = neckY - headR * 0.28;
   const air = Math.min(1, lift / (cell * 0.4));
   const top = headY - headR;
   const height = base + footRy - top;
@@ -482,28 +482,14 @@ function drawPawn(
   ctx.fillStyle = `rgba(18, 14, 8, ${(0.28 - air * 0.12).toFixed(3)})`;
   ctx.fill();
 
-  // Foot disc, bell-shaped body, sphere head: one silhouette.
+  // Cone base/body + sphere head, one silhouette so shading covers the join.
   const silhouette = (): void => {
     ctx.beginPath();
     ctx.ellipse(x, base, R, footRy, 0, 0, Math.PI * 2);
     ctx.moveTo(x - R, base);
-    ctx.bezierCurveTo(
-      x - R * 0.92,
-      base - bodyH * 0.32,
-      x - neckR * 2.1,
-      base - bodyH * 0.6,
-      x - neckR,
-      neckY,
-    );
+    ctx.lineTo(x - neckR, neckY);
     ctx.lineTo(x + neckR, neckY);
-    ctx.bezierCurveTo(
-      x + neckR * 2.1,
-      base - bodyH * 0.6,
-      x + R * 0.92,
-      base - bodyH * 0.32,
-      x + R,
-      base,
-    );
+    ctx.lineTo(x + R, base);
     ctx.closePath();
     ctx.moveTo(x + headR, headY);
     ctx.arc(x, headY, headR, 0, Math.PI * 2);
@@ -513,40 +499,47 @@ function drawPawn(
   ctx.fillStyle = colour;
   ctx.fill();
 
-  // Shading inside the silhouette: dark flanks, light upper left.
+  // Simple volume shading: dark flanks, light upper left.
   ctx.save();
   silhouette();
   ctx.clip();
 
   const sides = ctx.createLinearGradient(x - R, 0, x + R, 0);
-  sides.addColorStop(0, 'rgba(0, 0, 0, 0.4)');
+  sides.addColorStop(0, 'rgba(0, 0, 0, 0.38)');
   sides.addColorStop(0.28, 'rgba(255, 255, 255, 0.2)');
-  sides.addColorStop(0.56, 'rgba(0, 0, 0, 0.02)');
-  sides.addColorStop(1, 'rgba(0, 0, 0, 0.36)');
+  sides.addColorStop(0.58, 'rgba(0, 0, 0, 0.02)');
+  sides.addColorStop(1, 'rgba(0, 0, 0, 0.34)');
   ctx.fillStyle = sides;
   ctx.fillRect(x - R, top, R * 2, height);
 
-  const glow = ctx.createRadialGradient(x - R * 0.25, top + height * 0.18, R * 0.05, x, headY, R * 2.1);
-  glow.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
-  glow.addColorStop(0.45, 'rgba(255, 255, 255, 0.08)');
-  glow.addColorStop(1, 'rgba(0, 0, 0, 0.18)');
+  const glow = ctx.createRadialGradient(
+    x - R * 0.22,
+    top + height * 0.16,
+    R * 0.05,
+    x,
+    headY,
+    R * 2.1,
+  );
+  glow.addColorStop(0, 'rgba(255, 255, 255, 0.52)');
+  glow.addColorStop(0.42, 'rgba(255, 255, 255, 0.08)');
+  glow.addColorStop(1, 'rgba(0, 0, 0, 0.16)');
   ctx.fillStyle = glow;
   ctx.fillRect(x - R, top, R * 2, height);
 
   ctx.restore();
 
-  // Specular dot on the head keeps the sphere reading as round.
+  // Specular highlight on the sphere.
   ctx.beginPath();
   ctx.ellipse(
-    x - headR * 0.34,
-    headY - headR * 0.42,
-    headR * 0.34,
-    headR * 0.26,
-    -0.5,
+    x - headR * 0.32,
+    headY - headR * 0.38,
+    headR * 0.32,
+    headR * 0.24,
+    -0.45,
     0,
     Math.PI * 2,
   );
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.58)';
   ctx.fill();
 }
 
