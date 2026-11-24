@@ -443,9 +443,8 @@ function drawTokens(
 }
 
 /**
- * Classic Ludo pawn: sphere on top, cone below, connected at the neck.
- * Drawn from the ground point upward; `lift` raises the body while the shadow stays
- * on the ground and tightens.
+ * Classic Ludo counter: a white disc with a black rim and the player's colour inside.
+ * `lift` raises the disc while the shadow stays on the ground and tightens.
  */
 function drawPawn(
   ctx: CanvasRenderingContext2D,
@@ -457,89 +456,36 @@ function drawPawn(
   lift = 0,
 ): void {
   const R = radius;
-  const base = y - lift;
-  const footRy = R * 0.34;
-  const coneH = R * 1.18;
-  const neckY = base - coneH;
-  const neckR = R * 0.24;
-  const headR = R * 0.44;
-  const headY = neckY - headR * 0.28;
+  const cy = y - lift;
   const air = Math.min(1, lift / (cell * 0.4));
-  const top = headY - headR;
-  const height = base + footRy - top;
 
-  // Ground contact shadow, smaller and fainter the higher the pawn goes.
+  // Ground contact shadow, smaller and fainter the higher the disc goes.
   ctx.beginPath();
   ctx.ellipse(
-    x + R * 0.1,
-    y + footRy * 0.7,
-    R * (0.95 - air * 0.25),
-    footRy * (0.6 - air * 0.2),
+    x + R * 0.08,
+    y + R * 0.28,
+    R * (0.92 - air * 0.22),
+    R * (0.34 - air * 0.12),
     0,
     0,
     Math.PI * 2,
   );
-  ctx.fillStyle = `rgba(18, 14, 8, ${(0.28 - air * 0.12).toFixed(3)})`;
+  ctx.fillStyle = `rgba(18, 14, 8, ${(0.26 - air * 0.12).toFixed(3)})`;
   ctx.fill();
 
-  // Cone base/body + sphere head, one silhouette so shading covers the join.
-  const silhouette = (): void => {
-    ctx.beginPath();
-    ctx.ellipse(x, base, R, footRy, 0, 0, Math.PI * 2);
-    ctx.moveTo(x - R, base);
-    ctx.lineTo(x - neckR, neckY);
-    ctx.lineTo(x + neckR, neckY);
-    ctx.lineTo(x + R, base);
-    ctx.closePath();
-    ctx.moveTo(x + headR, headY);
-    ctx.arc(x, headY, headR, 0, Math.PI * 2);
-  };
+  // White disc with a black rim.
+  ctx.beginPath();
+  ctx.arc(x, cy, R, 0, Math.PI * 2);
+  ctx.fillStyle = '#fffdf8';
+  ctx.fill();
+  ctx.lineWidth = Math.max(1.1, R * 0.16);
+  ctx.strokeStyle = '#14110c';
+  ctx.stroke();
 
-  silhouette();
+  // Player colour inside.
+  ctx.beginPath();
+  ctx.arc(x, cy, R * 0.56, 0, Math.PI * 2);
   ctx.fillStyle = colour;
-  ctx.fill();
-
-  // Simple volume shading: dark flanks, light upper left.
-  ctx.save();
-  silhouette();
-  ctx.clip();
-
-  const sides = ctx.createLinearGradient(x - R, 0, x + R, 0);
-  sides.addColorStop(0, 'rgba(0, 0, 0, 0.38)');
-  sides.addColorStop(0.28, 'rgba(255, 255, 255, 0.2)');
-  sides.addColorStop(0.58, 'rgba(0, 0, 0, 0.02)');
-  sides.addColorStop(1, 'rgba(0, 0, 0, 0.34)');
-  ctx.fillStyle = sides;
-  ctx.fillRect(x - R, top, R * 2, height);
-
-  const glow = ctx.createRadialGradient(
-    x - R * 0.22,
-    top + height * 0.16,
-    R * 0.05,
-    x,
-    headY,
-    R * 2.1,
-  );
-  glow.addColorStop(0, 'rgba(255, 255, 255, 0.52)');
-  glow.addColorStop(0.42, 'rgba(255, 255, 255, 0.08)');
-  glow.addColorStop(1, 'rgba(0, 0, 0, 0.16)');
-  ctx.fillStyle = glow;
-  ctx.fillRect(x - R, top, R * 2, height);
-
-  ctx.restore();
-
-  // Specular highlight on the sphere.
-  ctx.beginPath();
-  ctx.ellipse(
-    x - headR * 0.32,
-    headY - headR * 0.38,
-    headR * 0.32,
-    headR * 0.24,
-    -0.45,
-    0,
-    Math.PI * 2,
-  );
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.58)';
   ctx.fill();
 }
 
