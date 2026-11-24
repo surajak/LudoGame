@@ -8,6 +8,7 @@
 
 import {
   DONE,
+  chooseCpuMove,
   createGame,
   legalMoves,
   step,
@@ -54,8 +55,12 @@ const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)
 const RAIL_SPACE = 164;
 /** Beat after each action, so a roll and the reply never land in the same instant. */
 const ACTION_PAUSE_MS = 500;
+/** How long the computer waits before rolling or moving, so its turn is readable. */
+const CPU_PAUSE_MS = 650;
 
 let playerCount: 2 | 4 = 4;
+/** Seat driven by the computer in a single-player game; null when every seat is human. */
+let cpuSeat: Seat | null = null;
 let game: GameState = createGame({ seed: (Date.now() & 0x7fffffff) || 1, playerCount });
 let legal: LegalMove[] = [];
 let layout: Layout = { cell: 0, originX: 0, originY: 0 };
@@ -78,6 +83,8 @@ let attentionTimer = 0;
 let repeatTimer = 0;
 /** Pending post-move pause before input opens again; 0 when none. */
 let settleTimer = 0;
+/** Pending computer action; 0 when none. */
+let cpuTimer = 0;
 
 /** Per-seat dice placeholders in the empty space above and below the board. */
 const seatDies = new Map<Seat, HTMLButtonElement>();
@@ -113,7 +120,7 @@ function buildSeatDice(): void {
       holder.append(die);
 
       holder.addEventListener('click', () => {
-        if (holder.dataset.active === 'true') roll();
+        if (holder.dataset.active === 'true' && !isCpuTurn()) roll();
       });
 
       rail.append(holder);
@@ -122,34 +129,39 @@ function buildSeatDice(): void {
   }
 }
 
+/** Seat label for messages: the computer seat is named by role, not colour. */
+function nameOf(seat: Seat): string {
+  return seat === cpuSeat ? 'Computer' : SEAT_NAMES[seat];
+}
+
 /** Human-readable summary of what just happened, newest event wins. */
 function describe(events: readonly GameEvent[], state: GameState): string {
   for (const event of [...events].reverse()) {
     switch (event.type) {
       case 'won':
-        return `<strong>${SEAT_NAMES[event.seat]} wins!</strong> All four tokens are home.`;
+        return `<strong>${nameOf(event.seat)} wins!</strong> All four tokens are home.`;
       case 'skipped':
         return event.reason === 'three-sixes'
-          ? `${SEAT_NAMES[event.seat]} rolled three sixes — turn forfeited.`
-          : `${SEAT_NAMES[event.seat]} has no legal move. Pass.`;
+          ? `${nameOf(event.seat)} rolled three sixes — turn forfeited.`
+          : `${nameOf(event.seat)} has no legal move. Pass.`;
       case 'moved':
         if (event.captures.length > 0) {
-          const victims = event.captures.map((ref) => SEAT_NAMES[ref.seat]).join(' and ');
-          return `${SEAT_NAMES[event.seat]} captured ${victims} — roll again.`;
+          const victims = event.captures.map((ref) => nameOf(ref.seat)).join(' and ');
+          return `${nameOf(event.seat)} captured ${victims} — roll again.`;
         }
         if (event.to === DONE) {
           const again =
             state.phase === 'await-roll' && state.turn === event.seat && state.winner === null
               ? ' — roll again.'
               : '.';
-          return `${SEAT_NAMES[event.seat]} brought a token home${again}`;
+          return `${nameOf(event.seat)} brought a token home${again}`;
         }
-        return `${SEAT_NAMES[event.seat]} moved.`;
+        return `${nameOf(event.seat)} moved.`;
       case 'rolled':
-        if (state.phase === 'await-move') {
-          return `${SEAT_NAMES[event.seat]} rolled <strong>${event.dice}</strong>. Pick a token.`;
+        if (state.phase === 'await-move' && state.turn !== cpuSeat) {
+          return `${nameOf(event.seat)} rolled <strong>${event.dice}</strong>. Pick a token.`;
         }
-        return `${SEAT_NAMES[event.seat]} rolled ${event.dice}.`;
+        return `${nameOf(event.seat)} rolled <strong>${event.dice}</strong>.`;
       default:
         break;
     }
@@ -171,6 +183,30 @@ function apply(result: { state: GameState; events: readonly GameEvent[] }): void
     if (game.turn !== previousTurn) play('turn');
     startAttentionLoop();
   }
+  scheduleCpu();
+}
+
+/** True while the computer seat is to act. */
+function isCpuTurn(): boolean {
+  return cpuSeat !== null && game.turn === cpuSeat && game.phase !== 'game-over';
+}
+
+/** Queue the computer's next action. Safe to call after any state change. */
+function scheduleCpu(): void {
+  window.clearTimeout(cpuTimer);
+  cpuTimer = 0;
+  if (!isCpuTurn()) return;
+  cpuTimer = window.setTimeout(() => {
+    cpuTimer = 0;
+    // A move in flight re-queues from the settle callback.
+    if (!isCpuTurn() || busy) return;
+    if (game.phase === 'await-roll') {
+      roll();
+      return;
+    }
+    const token = chooseCpuMove(game, legal);
+    if (token !== null) moveToken(token);
+  }, CPU_PAUSE_MS);
 }
 
 /** Bounce the die of the seat to play, so a new turn is hard to miss. */
@@ -208,20 +244,35 @@ function stopAttentionLoop(): void {
   for (const holder of seatDies.values()) holder.classList.remove('attention');
 }
 
-/** The button always offers the other mode, so its label says what a click will do. */
-function syncPlayersButton(): void {
-  const next = playerCount === 4 ? 2 : 4;
-  playersButton.textContent = `Play ${next} players`;
-  playersButton.setAttribute('aria-label', `Start a new ${next}-player game`);
-  playersButton.title = `Start a new game with ${next} players`;
+/** The mode the button will switch to: 4 → 2 → computer → 4. */
+function nextMode(): 1 | 2 | 4 {
+  const current = cpuSeat !== null ? 1 : playerCount;
+  return current === 4 ? 2 : current === 2 ? 1 : 4;
 }
 
-/** Switch between 2 and 4 players. Two-player games use the opposite diagonal. */
-function newGame(next: 2 | 4): void {
+/** The button always offers the other mode, so its label says what a click will do. */
+function syncPlayersButton(): void {
+  const next = nextMode();
+  playersButton.textContent = next === 1 ? 'Play vs computer' : `Play ${next} players`;
+  playersButton.setAttribute(
+    'aria-label',
+    next === 1 ? 'Start a game against the computer' : `Start a new ${next}-player game`,
+  );
+  playersButton.title =
+    next === 1 ? 'Start a single-player game against the computer' : `Start a new game with ${next} players`;
+}
+
+/**
+ * Start a new game. One player means red against the computer on yellow, using the
+ * same opposite-corner layout as a two-player game.
+ */
+function newGame(next: 1 | 2 | 4): void {
   stopAttentionLoop();
   window.clearTimeout(settleTimer);
   window.clearTimeout(attentionTimer);
+  window.clearTimeout(cpuTimer);
   settleTimer = 0;
+  cpuTimer = 0;
   hops.clear();
   ticked.clear();
   busy = false;
@@ -229,13 +280,15 @@ function newGame(next: 2 | 4): void {
   lastFace = 0;
   rolledSeat = null;
 
-  playerCount = next;
+  cpuSeat = next === 1 ? 2 : null;
+  playerCount = next === 1 ? 2 : next;
   game = createGame({ seed: (Date.now() & 0x7fffffff) || 1, playerCount });
   message = 'Tap the dice to start.';
   legal = legalMoves(game);
   syncPlayersButton();
   syncHud();
   startAttentionLoop();
+  scheduleCpu();
 }
 
 function syncHud(): void {
@@ -244,8 +297,10 @@ function syncHud(): void {
   const shownSeat = winner !== null ? winner : game.turn;
 
   turnName.textContent = over
-    ? `${SEAT_NAMES[shownSeat]} won`
-    : `${SEAT_NAMES[shownSeat]}${game.phase === 'await-move' ? ' — pick a token' : ''}`;
+    ? `${nameOf(shownSeat)} won`
+    : `${nameOf(shownSeat)}${
+        game.phase === 'await-move' && shownSeat !== cpuSeat ? ' — pick a token' : ''
+      }`;
   turnDot.style.setProperty('--seat', SEAT_COLOURS[shownSeat]);
   turnDot.style.background = SEAT_COLOURS[shownSeat];
 
@@ -300,7 +355,8 @@ function roll(): void {
 
 /** One legal move needs no decision: play it. */
 function autoMoveIfSingle(): void {
-  if (game.phase !== 'await-move' || legal.length !== 1) return;
+  // The computer always decides for itself, even when only one move is legal.
+  if (isCpuTurn() || game.phase !== 'await-move' || legal.length !== 1) return;
   autoMoves += 1;
   moveToken(legal[0].token);
 }
@@ -409,6 +465,7 @@ function frame(time: number): void {
         settleTimer = 0;
         busy = false;
         syncHud();
+        scheduleCpu();
       }, ACTION_PAUSE_MS);
     }
   }
@@ -450,7 +507,7 @@ function tokenAt(clientX: number, clientY: number): { seat: Seat; token: TokenIn
 
 canvas.addEventListener('pointerdown', (event) => {
   // Only the dice rolls. Board taps are for choosing a token.
-  if (game.phase !== 'await-move') return;
+  if (game.phase !== 'await-move' || isCpuTurn()) return;
   const hit = tokenAt(event.clientX, event.clientY);
   if (hit) moveToken(hit.token);
 });
@@ -470,7 +527,7 @@ soundButton.addEventListener('click', () => {
 syncSound();
 
 playersButton.addEventListener('click', () => {
-  newGame(playerCount === 4 ? 2 : 4);
+  newGame(nextMode());
   play('tap');
 });
 
@@ -481,7 +538,7 @@ window.addEventListener('keydown', (event) => {
   }
   if (event.key === ' ' || event.key === 'Enter') {
     event.preventDefault();
-    roll();
+    if (!isCpuTurn()) roll();
   }
 });
 
@@ -506,6 +563,8 @@ Object.assign(globalThis, {
     attentions: () => attentions,
     roll: () => roll(),
     move: (token: number) => moveToken(token as TokenIndex),
+    /** Seat the computer plays, or null in a hotseat game. */
+    cpuSeat: () => cpuSeat,
     sizes: () => sizeVersion,
     canvasSize: () => ({ width: canvas.width, height: canvas.height, layout }),
     /** Token centres in CSS pixels, so tests can click exactly where a token is drawn. */

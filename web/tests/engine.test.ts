@@ -11,6 +11,7 @@ import {
   type TokenIndex,
 } from '../src/engine/board.ts';
 import {
+  chooseCpuMove,
   createGame,
   legalMoves,
   step,
@@ -259,4 +260,32 @@ test('a token never leaves the legal progress range', () => {
     }
   }
 });
+
+test('the computer opens a new pawn on a six', () => {
+  const base = createGame({ seed: 1 });
+  const game = atMove(withTokens(base, 0, [10, YARD, YARD, DONE]), 6);
+  assert.equal(chooseCpuMove(game, legalMoves(game)), 1);
+});
+
+test('the computer saves a threatened pawn before capturing', () => {
+  const base = createGame({ seed: 1 });
+  let game = withTokens(base, 0, [10, 20, DONE, DONE]);
+  // Seat 1 sits on ring 7 (three behind the pawn at 10) and ring 24 (the capture target).
+  game = withTokens(game, 1, [46, 11, YARD, YARD]);
+  game = atMove(game, 4);
+
+  // Token 0 escapes 10 -> 14; token 1 could capture 20 -> 24.
+  assert.equal(chooseCpuMove(game, legalMoves(game)), 0);
+});
+
+test('the computer captures when nothing needs saving', () => {
+  const base = createGame({ seed: 1 });
+  let game = withTokens(base, 0, [20, 44, DONE, DONE]);
+  game = withTokens(game, 1, [11, YARD, YARD, YARD]);
+  game = atMove(game, 4);
+
+  // Token 0 captures 20 -> 24; token 1 only advances 44 -> 48.
+  assert.equal(chooseCpuMove(game, legalMoves(game)), 0);
+});
+
 

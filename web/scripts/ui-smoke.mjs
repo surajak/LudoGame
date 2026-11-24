@@ -412,12 +412,66 @@ async function main() {
   if (dicePos.r0 >= dicePos.r1) fail('red die should stay in the left top slot');
   if (dicePos.y2 <= dicePos.b3) fail(`yellow die should stay in its own right slot, not blue's (${dicePos.y2} <= ${dicePos.b3})`);
   if (two.tokens !== 8) fail(`2-player game should draw 8 pawns, got ${two.tokens}`);
-  if (two.label !== 'Play 4 players') fail(`toggle should offer 4 players, got ${two.label}`);
+  if (two.label !== 'Play vs computer') fail(`toggle should offer the computer, got ${two.label}`);
   await clickActiveDie();
   await sleep(800);
   const twoRolls = await evaluate('globalThis.ludo.state().rollCount');
   if (twoRolls < 1) fail('2-player game could not roll');
   await screenshot('ui-2player.png');
+
+  // Next click starts a single-player game: red against the computer on yellow.
+  const one = await evaluate(`(() => {
+    document.querySelector('#players').click();
+    return {
+      seats: globalThis.ludo.state().seats,
+      cpu: globalThis.ludo.cpuSeat(),
+      label: document.querySelector('#players').textContent,
+      dice: [...document.querySelectorAll('.seat-die')].filter((d) => !d.hidden).length,
+      tokens: globalThis.ludo.tokenPoints().length,
+    };
+  })()`);
+  if (one.seats.join(',') !== '0,2') fail(`single-player game should use seats 0,2, got ${one.seats}`);
+  if (one.cpu !== 2) fail(`computer should play seat 2, got ${one.cpu}`);
+  if (one.label !== 'Play 4 players') fail(`toggle should offer 4 players, got ${one.label}`);
+  if (one.dice !== 2 || one.tokens !== 8) {
+    fail(`single-player board should hold 2 dice and 8 pawns, got ${one.dice}/${one.tokens}`);
+  }
+
+  // Play the human side until the computer is to move, then watch it act unaided.
+  let sawCpu = false;
+  let cpuRolled = false;
+  let cpuLabel = '';
+  for (let step = 0; step < 200 && !cpuRolled; step += 1) {
+    const now = await evaluate(`({
+      ...globalThis.ludo.state(),
+      cpu: globalThis.ludo.cpuSeat(),
+    })`);
+    if (now.phase === 'game-over') break;
+    if (now.turn === now.cpu) {
+      sawCpu = true;
+      cpuLabel = await evaluate("document.querySelector('#turn-name').textContent");
+      const beforeCpu = now.rollCount;
+      await sleep(1400);
+      cpuRolled = (await evaluate('globalThis.ludo.state().rollCount')) > beforeCpu;
+      continue;
+    }
+    if (now.phase === 'await-roll') {
+      await clickActiveDie();
+    } else {
+      const candidate = await evaluate(`(() => {
+        const legal = globalThis.ludo.legal();
+        const points = globalThis.ludo.tokenPoints();
+        const hit = points.find((p) => legal.some((m) => m.token === p.token && m.seat === p.seat));
+        return hit ?? null;
+      })()`);
+      if (candidate) await click(candidate.x, candidate.y);
+    }
+    await sleep(60);
+  }
+  if (!sawCpu) fail('the computer never got a turn');
+  if (!cpuRolled) fail('the computer did not roll on its own');
+  if (!cpuLabel.includes('Computer')) fail(`turn label should name the computer, got "${cpuLabel}"`);
+  await screenshot('ui-1player.png');
 
   console.log(`ok   board ${boot.canvas.width}x${boot.canvas.height}, cell ${boot.canvas.layout.cell.toFixed(1)}px`);
   console.log(`ok   rolled ${finalState.turns} times, ${moved} tokens out of the yards`);
@@ -426,6 +480,7 @@ async function main() {
   console.log(`ok   turn-start bounce repeats while waiting (${pulsesBefore} -> ${pulsesAfter})`);
   console.log(`ok   4 seat dice, ${phone.die}px, ${phone.topGap}px/${phone.bottomGap}px from the board on a 390x844 phone`);
   console.log(`ok   2-player mode uses diagonal seats ${two.seats.join(',')}: ${two.dice.length} dice, ${two.tokens} pawns`);
+  console.log(`ok   single-player mode: computer on seat ${one.cpu} rolled unaided`);
   console.log(`ok   screenshot ${shot}`);
 
   if (moved < 1) fail('no token ever left the yard; board interaction looks broken');

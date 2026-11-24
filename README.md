@@ -4,11 +4,11 @@ Classic Ludo for one device. No ads, no accounts, no network calls, no install.
 
 **[▶ Play now](https://surajak.github.io/LudoGame/)**
 
-<img src="docs/screenshot.png" alt="Ludo board with four wooden pawns per player, dice rails above and below" width="420">
+<img src="docs/screenshot.png" alt="Ludo board with four map-pin pawns per player, dice rails above and below" width="420">
 
 ## Why this one
 
-- **Hotseat Ludo, 2–4 players.** Pass the phone, take turns. No sign-up, nothing tracked.
+- **Hotseat or against the computer.** 2–4 players pass the phone, or a single player takes on a simple computer opponent. No sign-up, nothing tracked.
 - **No ads, no IAP, no servers.** The whole game is one HTML file with zero external requests.
 - **Honest rules.** Sixes, captures, blockades, safe squares, exact roll to finish — each one has a unit test.
 - **Own art and audio.** Pawns are drawn as vectors on a canvas; dice, steps and captures are synthesised with WebAudio. No borrowed assets, no audio files.
@@ -17,7 +17,7 @@ Classic Ludo for one device. No ads, no accounts, no network calls, no install.
 
 ## How to play
 
-0. Use **Play 2 players** / **Play 4 players** in the header to pick the mode. Two players sit on opposite corners. Switching starts a new game.
+0. Use the header button to cycle **Play 2 players → Play vs computer → Play 4 players**. Two-player games use opposite corners; the computer always plays yellow. Switching starts a new game.
 1. Tap the die beside **your** home to roll. `Space` or `Enter` also roll.
 2. Roll a **6** to bring a pawn out of the yard.
 3. Tap one of the bouncing, enlarged pawns to move it. When only one move is legal, it plays itself.
