@@ -190,7 +190,7 @@ async function main() {
   if (boot.canvas.width !== boot.canvas.height) {
     fail(`canvas should be square, got ${boot.canvas.width}x${boot.canvas.height}`);
   }
-  const fills = Math.abs(boot.canvas.layout.cell * 15 - boot.canvas.width * 0.98) < 2;
+  const fills = Math.abs(boot.canvas.layout.cell * 15 - boot.canvas.width) < 1.5;
   if (!fills) fail('board does not fill the canvas');
 
   // The die is a real CSS cube: six faces, 3D preserved, and face six painted red.
@@ -398,24 +398,21 @@ async function main() {
     const board = document.querySelector('#board').getBoundingClientRect();
     const rails = [...document.querySelectorAll('.seat-dice')].map((rail) => rail.getBoundingClientRect());
     const die = document.querySelector('.seat-die:not([hidden]) .dice').getBoundingClientRect();
-    const overlap = Number.parseFloat(
-      getComputedStyle(document.querySelector('#stage')).getPropertyValue('--rail-overlap'),
-    );
+    const app = document.querySelector('#app').getBoundingClientRect();
     return {
       stage: Math.round(stage.width),
       board: Math.round(board.width),
       topGap: Math.round(board.top - rails[0].bottom),
       bottomGap: Math.round(rails[1].top - board.bottom),
       die: Math.round(die.width),
-      overlap,
+      app: Math.round(app.width),
       headerDie: !!document.querySelector('#roll'),
     };
   })()`);
   if (phone.headerDie) fail('the old header dice button is still in the page');
   if (phone.board > phone.stage + 1) fail(`board ${phone.board}px overflows a ${phone.stage}px stage`);
-  if (!(phone.overlap >= 4 && phone.overlap <= 14)) fail(`rail overlap is ${phone.overlap}px`);
-  if (Math.abs(phone.topGap + phone.overlap) > 2) fail(`top rail sits ${phone.topGap}px from the board edge`);
-  if (Math.abs(phone.bottomGap + phone.overlap) > 2) fail(`bottom rail sits ${phone.bottomGap}px from the board edge`);
+  if (Math.abs(phone.topGap) > 2) fail(`top rail is ${phone.topGap}px from the board`);
+  if (Math.abs(phone.bottomGap) > 2) fail(`bottom rail is ${phone.bottomGap}px from the board`);
   // A fresh layout can report the die before the first paint; re-measure before failing.
   let dieWidth = phone.die;
   for (let attempt = 0; attempt < 5 && dieWidth < 52; attempt += 1) {

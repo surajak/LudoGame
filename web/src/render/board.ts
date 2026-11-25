@@ -41,7 +41,9 @@ const SAFE_FILL = '#f3e8d2';
 const STAR = '#b9a98c';
 
 export function computeLayout(width: number, height: number): Layout {
-  const size = Math.min(width, height) * 0.98;
+  // The board fills the canvas edge to edge: no margin, so the outer walls sit flush
+  // with the screen. The plate keeps a rounded corner, and the page keeps safe-area insets.
+  const size = Math.min(width, height);
   const cell = size / GRID;
   return {
     cell,

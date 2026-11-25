@@ -54,10 +54,8 @@ const ctx: CanvasRenderingContext2D = maybeCtx;
 const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 /** Height of one dice rail: the die chip plus its button padding and border. */
 const RAIL_BOX = 71;
-/** How far each rail tucks over the board's top and bottom rim, not its cells. */
-const RAIL_OVERLAP = 8;
-/** Vertical room the rails really take: each one overlaps the board. */
-const RAIL_SPACE = RAIL_BOX * 2 - RAIL_OVERLAP * 2;
+/** Vertical room the rails take in the spare space above and below the board. */
+const RAIL_SPACE = RAIL_BOX * 2 + 6;
 /** Beat after each action, so a roll and the reply never land in the same instant. */
 const ACTION_PAUSE_MS = 500;
 /** How long the computer waits before rolling or moving, so its turn is readable. */
@@ -458,7 +456,6 @@ function resize(): void {
   stage.style.setProperty('--rail-gap', `${Math.floor((height - side) / 2)}px`);
   stage.style.setProperty('--rail-inset', `${Math.floor((width - side) / 2)}px`);
   stage.style.setProperty('--board-side', `${side}px`);
-  stage.style.setProperty('--rail-overlap', `${RAIL_OVERLAP}px`);
 }
 
 function frame(time: number): void {
