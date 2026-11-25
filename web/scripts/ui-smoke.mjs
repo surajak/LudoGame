@@ -398,19 +398,24 @@ async function main() {
     const board = document.querySelector('#board').getBoundingClientRect();
     const rails = [...document.querySelectorAll('.seat-dice')].map((rail) => rail.getBoundingClientRect());
     const die = document.querySelector('.seat-die:not([hidden]) .dice').getBoundingClientRect();
+    const overlap = Number.parseFloat(
+      getComputedStyle(document.querySelector('#stage')).getPropertyValue('--rail-overlap'),
+    );
     return {
       stage: Math.round(stage.width),
       board: Math.round(board.width),
       topGap: Math.round(board.top - rails[0].bottom),
       bottomGap: Math.round(rails[1].top - board.bottom),
       die: Math.round(die.width),
+      overlap,
       headerDie: !!document.querySelector('#roll'),
     };
   })()`);
   if (phone.headerDie) fail('the old header dice button is still in the page');
   if (phone.board > phone.stage + 1) fail(`board ${phone.board}px overflows a ${phone.stage}px stage`);
-  if (Math.abs(phone.topGap) > 2) fail(`top rail is ${phone.topGap}px from the board`);
-  if (Math.abs(phone.bottomGap) > 2) fail(`bottom rail is ${phone.bottomGap}px from the board`);
+  if (!(phone.overlap >= 4 && phone.overlap <= 14)) fail(`rail overlap is ${phone.overlap}px`);
+  if (Math.abs(phone.topGap + phone.overlap) > 2) fail(`top rail sits ${phone.topGap}px from the board edge`);
+  if (Math.abs(phone.bottomGap + phone.overlap) > 2) fail(`bottom rail sits ${phone.bottomGap}px from the board edge`);
   // A fresh layout can report the die before the first paint; re-measure before failing.
   let dieWidth = phone.die;
   for (let attempt = 0; attempt < 5 && dieWidth < 52; attempt += 1) {

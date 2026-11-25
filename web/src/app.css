@@ -224,14 +224,14 @@ body {
   pointer-events: none;
 }
 
-/* Flush against the board edges: the spare space above and below the square. */
+/* Flush against the board edges, each rail tucked over the square's own edge. */
 .seat-dice[data-rail='top'] {
   top: var(--rail-gap, 0px);
-  transform: translateY(-100%);
+  transform: translateY(calc(-100% + var(--rail-overlap, 0px)));
 }
 
 .seat-dice[data-rail='bottom'] {
-  top: calc(var(--rail-gap, 0px) + var(--board-side, 0px));
+  top: calc(var(--rail-gap, 0px) + var(--board-side, 0px) - var(--rail-overlap, 0px));
 }
 
 .seat-die {
