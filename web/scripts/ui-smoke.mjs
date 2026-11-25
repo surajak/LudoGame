@@ -397,7 +397,7 @@ async function main() {
     const stage = document.querySelector('#stage').getBoundingClientRect();
     const board = document.querySelector('#board').getBoundingClientRect();
     const rails = [...document.querySelectorAll('.seat-dice')].map((rail) => rail.getBoundingClientRect());
-    const die = document.querySelector('.seat-die .dice').getBoundingClientRect();
+    const die = document.querySelector('.seat-die:not([hidden]) .dice').getBoundingClientRect();
     return {
       stage: Math.round(stage.width),
       board: Math.round(board.width),
@@ -411,10 +411,23 @@ async function main() {
   if (phone.board > phone.stage + 1) fail(`board ${phone.board}px overflows a ${phone.stage}px stage`);
   if (Math.abs(phone.topGap) > 2) fail(`top rail is ${phone.topGap}px from the board`);
   if (Math.abs(phone.bottomGap) > 2) fail(`bottom rail is ${phone.bottomGap}px from the board`);
-  if (phone.die < 52) fail(`seat die is only ${phone.die}px wide`);
+  // A fresh layout can report the die before the first paint; re-measure before failing.
+  let dieWidth = phone.die;
+  for (let attempt = 0; attempt < 5 && dieWidth < 52; attempt += 1) {
+    await sleep(150);
+    dieWidth = Math.round(
+      await evaluate(
+        `document.querySelector('.seat-die:not([hidden]) .dice').getBoundingClientRect().width`,
+      ),
+    );
+  }
+  if (dieWidth < 52) fail(`seat die is only ${dieWidth}px wide`);
   await send('Emulation.clearDeviceMetricsOverride');
 
   // Change mode reopens the picker, then two players start on opposite corners.
+  const bgBefore = await evaluate('getComputedStyle(document.body).backgroundImage');
+  const hasGradient = /gradient/.test(bgBefore);
+  if (!hasGradient) fail('the backdrop should be painted with generated gradients');
   const two = await evaluate(`(() => {
     document.querySelector('#players').click();
     const screen = document.querySelector('#mode-screen');
@@ -439,6 +452,8 @@ async function main() {
   if (dicePos.r0 >= dicePos.r1) fail('red die should stay in the left top slot');
   if (dicePos.y2 <= dicePos.b3) fail(`yellow die should stay in its own right slot, not blue's (${dicePos.y2} <= ${dicePos.b3})`);
   if (two.tokens !== 8) fail(`2-player game should draw 8 pawns, got ${two.tokens}`);
+  const bgAfter = await evaluate('getComputedStyle(document.body).backgroundImage');
+  if (bgBefore === bgAfter) fail('a new game should repaint the backdrop');
   await clickActiveDie();
   await sleep(800);
   const twoRolls = await evaluate('globalThis.ludo.state().rollCount');

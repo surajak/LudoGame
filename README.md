@@ -11,7 +11,7 @@ Classic Ludo for one device. No ads, no accounts, no network calls, no install.
 - **Hotseat or against the computer.** 2–4 players pass the phone, or a single player takes on a simple computer opponent. No sign-up, nothing tracked.
 - **No ads, no IAP, no servers.** The whole game is one HTML file with zero external requests.
 - **Honest rules.** Sixes, captures, blockades, safe squares, exact roll to finish — each one has a unit test.
-- **Own art and audio.** Pawns are drawn as vectors on a canvas; dice, steps and captures are synthesised with WebAudio. No borrowed assets, no audio files.
+- **Own art and audio.** Pawns are drawn as vectors on a canvas; dice, steps and captures are synthesised with WebAudio; the colourful backdrop is generated as CSS gradients, re-rolled every game. No borrowed assets, no audio files, no images.
 - **Constant hop speed.** A pawn crosses one square per beat, so a six visibly takes six times as long as a one.
 - **Readable board.** Every legal move gets a hopping preview; the die of the seat to play keeps bouncing until rolled.
 

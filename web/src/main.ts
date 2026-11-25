@@ -268,6 +268,23 @@ function currentMode(): 1 | 2 | 4 {
 }
 
 /**
+ * Repaint the page backdrop: three soft colour blobs on a dark tint, re-rolled for
+ * every new game. Pure CSS gradients built from random hues — no images, no network,
+ * no resources beyond a string assignment.
+ */
+function paintBackdrop(): void {
+  const hue = Math.floor(Math.random() * 360);
+  const spot = (h: number, x: number, y: number, size: number): string =>
+    `radial-gradient(${size}% ${size}% at ${x.toFixed(0)}% ${y.toFixed(0)}%, hsl(${h.toFixed(0)} 78% 38% / 0.7) 0%, transparent 72%)`;
+  document.body.style.backgroundImage = [
+    spot(hue, 8 + Math.random() * 30, 8 + Math.random() * 25, 55 + Math.random() * 30),
+    spot((hue + 90 + Math.random() * 60) % 360, 55 + Math.random() * 35, 20 + Math.random() * 30, 50 + Math.random() * 30),
+    spot((hue + 200 + Math.random() * 60) % 360, 15 + Math.random() * 60, 65 + Math.random() * 25, 55 + Math.random() * 35),
+    `linear-gradient(160deg, hsl(${hue} 40% 12%), hsl(${(hue + 40) % 360} 35% 9%) 60%, #0b0f14)`,
+  ].join(', ');
+}
+
+/**
  * Start a new game. One player means red against the computer on yellow, using the
  * same opposite-corner layout as a two-player game.
  */
@@ -287,6 +304,7 @@ function newGame(next: 1 | 2 | 4): void {
 
   cpuSeat = next === 1 ? 2 : null;
   playerCount = next === 1 ? 2 : next;
+  paintBackdrop();
   game = createGame({ seed: (Date.now() & 0x7fffffff) || 1, playerCount });
   message = 'Tap the dice to start.';
   legal = legalMoves(game);
@@ -563,6 +581,7 @@ buildSeatDice();
 resize();
 legal = legalMoves(game);
 syncHud();
+paintBackdrop();
 showModes();
 requestAnimationFrame(frame);
 
