@@ -187,8 +187,11 @@ async function main() {
 
   if (!boot || boot.points !== 16) fail(`expected 16 tokens on the board, got ${boot?.points}`);
   if (boot.canvas.layout.cell <= 0) fail('board layout has zero cell size');
-  if (boot.canvas.width !== boot.canvas.height) {
-    fail(`canvas should be square, got ${boot.canvas.width}x${boot.canvas.height}`);
+  // The canvas is the board plus one pin height of headroom, so top-wall pins are whole.
+  const pinRoom = boot.canvas.height - boot.canvas.width;
+  const expectedRoom = boot.canvas.layout.cell * 1.2;
+  if (pinRoom < 1 || Math.abs(pinRoom - expectedRoom) > 2) {
+    fail(`canvas headroom is ${pinRoom}px, expected about ${expectedRoom}px`);
   }
   const fills = Math.abs(boot.canvas.layout.cell * 15 - boot.canvas.width) < 1.5;
   if (!fills) fail('board does not fill the canvas');
@@ -391,26 +394,32 @@ async function main() {
     deviceScaleFactor: 2,
     mobile: true,
   });
-  await sleep(240);
+  // Let the ResizeObserver re-measure the stage before reading rail geometry.
+  await sleep(600);
   await screenshot('ui-phone.png');
   const phone = await evaluate(`(() => {
-    const stage = document.querySelector('#stage').getBoundingClientRect();
-    const board = document.querySelector('#board').getBoundingClientRect();
+    const stage = document.querySelector('#stage');
+    const stageBox = stage.getBoundingClientRect();
+    const style = getComputedStyle(stage);
+    // The rails sit inside the stage, so convert its own coordinates to viewport ones.
+    const boardTop = stageBox.top + Number.parseFloat(style.getPropertyValue('--rail-gap'));
+    const boardSide = Number.parseFloat(style.getPropertyValue('--board-side'));
+    const canvas = document.querySelector('#board').getBoundingClientRect();
     const rails = [...document.querySelectorAll('.seat-dice')].map((rail) => rail.getBoundingClientRect());
     const die = document.querySelector('.seat-die:not([hidden]) .dice').getBoundingClientRect();
-    const app = document.querySelector('#app').getBoundingClientRect();
     return {
-      stage: Math.round(stage.width),
-      board: Math.round(board.width),
-      topGap: Math.round(board.top - rails[0].bottom),
-      bottomGap: Math.round(rails[1].top - board.bottom),
+      stage: Math.round(stageBox.width),
+      board: Math.round(boardSide),
+      headroom: Math.round(canvas.height - boardSide),
+      topGap: Math.round(boardTop - rails[0].bottom),
+      bottomGap: Math.round(rails[1].top - (boardTop + boardSide)),
       die: Math.round(die.width),
-      app: Math.round(app.width),
       headerDie: !!document.querySelector('#roll'),
     };
   })()`);
   if (phone.headerDie) fail('the old header dice button is still in the page');
   if (phone.board > phone.stage + 1) fail(`board ${phone.board}px overflows a ${phone.stage}px stage`);
+  if (phone.headroom < 10) fail(`canvas gives the board no room above, ${phone.headroom}px`);
   if (Math.abs(phone.topGap) > 2) fail(`top rail is ${phone.topGap}px from the board`);
   if (Math.abs(phone.bottomGap) > 2) fail(`bottom rail is ${phone.bottomGap}px from the board`);
   // A fresh layout can report the die before the first paint; re-measure before failing.

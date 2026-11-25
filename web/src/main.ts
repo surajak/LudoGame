@@ -56,6 +56,11 @@ const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)
 const RAIL_BOX = 71;
 /** Vertical room the rails take in the spare space above and below the board. */
 const RAIL_SPACE = RAIL_BOX * 2 + 6;
+/**
+ * Headroom the canvas keeps above the board so a pawn standing on the top wall draws
+ * its whole pin instead of being cut by the canvas edge.
+ */
+const PIN_ROOM = 1.2;
 /** Beat after each action, so a roll and the reply never land in the same instant. */
 const ACTION_PAUSE_MS = 500;
 /** How long the computer waits before rolling or moving, so its turn is readable. */
@@ -439,21 +444,27 @@ function resize(): void {
   const width = Math.max(1, Math.floor(rect.width));
   const height = Math.max(1, Math.floor(rect.height));
   // The board is square; the stage centres it and keeps a strip free above and below
-  // for the per-seat dice, so they always have somewhere to sit.
+  // for the per-seat dice, so they always have somewhere to sit. The canvas is taller
+  // than the board by one pin height, so pins standing on the top wall stay whole.
   const side = Math.max(120, Math.floor(Math.min(width, height - RAIL_SPACE)));
   const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+  const cell = side / 15;
+  const pinRoom = Math.ceil(cell * PIN_ROOM);
+  const canvasHeight = side + pinRoom;
 
   canvas.width = Math.round(side * dpr);
-  canvas.height = Math.round(side * dpr);
+  canvas.height = Math.round(canvasHeight * dpr);
   canvas.style.width = `${side}px`;
-  canvas.style.height = `${side}px`;
+  canvas.style.height = `${canvasHeight}px`;
 
   ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  layout = computeLayout(side, side);
+  // Square board flush with the screen edges, dropped by one pin height.
+  layout = { ...computeLayout(side, side), originY: pinRoom };
   sizeVersion += 1;
 
-  // Rails hug the board edges and tuck over them, so tell them where the square sits.
-  stage.style.setProperty('--rail-gap', `${Math.floor((height - side) / 2)}px`);
+  // Rails hug the board edges, so tell them where the square sits in the stage.
+  const canvasTop = Math.floor((height - canvasHeight) / 2);
+  stage.style.setProperty('--rail-gap', `${canvasTop + pinRoom}px`);
   stage.style.setProperty('--rail-inset', `${Math.floor((width - side) / 2)}px`);
   stage.style.setProperty('--board-side', `${side}px`);
 }
