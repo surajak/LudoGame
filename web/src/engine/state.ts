@@ -1,7 +1,6 @@
 import {
   DONE,
   LAST_RING_PROGRESS,
-  RING_SIZE,
   SEAT_COUNT,
   TOKENS_PER_PLAYER,
   YARD,
@@ -99,10 +98,6 @@ export function createGame(options: {
     rng: createRng(options.seed),
     rollCount: 0,
   };
-}
-
-export function tokenProgress(state: GameState, ref: TokenRef): number {
-  return state.players[ref.seat].tokens[ref.token];
 }
 
 /** All tokens currently standing on a given ring square. */
@@ -204,18 +199,7 @@ export function legalMoves(state: GameState): LegalMove[] {
   return moves;
 }
 
-export function movesForToken(
-  state: GameState,
-  token: TokenIndex,
-): LegalMove | undefined {
-  return legalMoves(state).find((move) => move.token === token);
-}
-
 /** True when the seat has all four tokens home. */
 export function hasWon(state: GameState, seat: Seat): boolean {
   return state.players[seat].tokens.every((progress) => progress === DONE);
-}
-
-export function ringLength(): number {
-  return RING_SIZE;
 }

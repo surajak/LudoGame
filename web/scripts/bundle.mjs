@@ -8,6 +8,7 @@
  *   npm run bundle
  */
 
+import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -26,9 +27,33 @@ if (!styleMatch || !scriptMatch) {
 const css = readFileSync(join(dist, styleMatch[1]), 'utf8');
 const js = readFileSync(join(dist, scriptMatch[1]), 'utf8').replace(/<\/script/gi, '<\\/script');
 
+// The game is one inline module, so lock it down by content hash rather than a nonce:
+// nothing else on the page may run, and nothing may load, connect or frame us.
+const scriptBody = `\n${js}\n`;
+const scriptHash = createHash('sha256').update(scriptBody, 'utf8').digest('base64');
+const cspMeta =
+  '<meta http-equiv="Content-Security-Policy" content="' +
+  [
+    "default-src 'none'",
+    `script-src 'sha256-${scriptHash}'`,
+    "style-src 'unsafe-inline'",
+    "base-uri 'none'",
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+  ].join('; ') +
+  '">';
+
 const standalone = html
   .replace(styleTag, `<style>\n${css}\n</style>`)
-  .replace(scriptTag, `<script type="module">\n${js}\n</script>`);
+  .replace(scriptTag, `<script type="module">${scriptBody}</script>`)
+  .replace(
+    '<meta name="color-scheme" content="dark" />',
+    `<meta name="color-scheme" content="dark" />\n    ${cspMeta}`,
+  );
+
+if (!standalone.includes('Content-Security-Policy')) {
+  throw new Error('the CSP meta tag was not injected into the standalone file');
+}
 
 const out = join(dist, 'ludo.html');
 writeFileSync(out, standalone);

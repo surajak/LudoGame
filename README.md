@@ -84,4 +84,11 @@ The engine is deterministic: a seed plus a list of actions reproduces a game byt
 
 TypeScript and HTML5 Canvas with no runtime dependencies. `vite` and `typescript` are dev-only. Motion is skipped when the OS requests reduced motion; sound starts after your first tap, as browsers require.
 
+## Security posture
+
+- No secrets, keys, tokens or credentials in the code, the config or the git history.
+- No network calls at runtime: no `fetch`, XHR, WebSocket, analytics, ads or fonts. Everything is computed locally.
+- The single-file build carries a strict Content-Security-Policy: `default-src 'none'`, the one inline script pinned by SHA-256 hash, `base-uri 'none'`, `form-action 'none'`, `frame-ancestors 'none'`. Nothing else on the page can run or load.
+- CI uses `npm ci` (lockfile-pinned) and fails on `npm audit` advisories; the deploy token has only `pages: write` + `id-token: write`.
+
 More detail in [`web/README.md`](web/README.md) and [`docs/feature-spec.md`](docs/feature-spec.md).

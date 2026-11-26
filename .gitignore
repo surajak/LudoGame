@@ -18,6 +18,9 @@ ui-*.png
 .env.*
 *.local
 
+# Local agent tooling and skills, never part of the project
+.opencode/
+
 # OS and editor files
 .DS_Store
 Thumbs.db

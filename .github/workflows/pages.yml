@@ -31,6 +31,11 @@ jobs:
         working-directory: web
         run: npm ci
 
+      # No runtime dependencies ship, so this only guards the build toolchain.
+      - name: Audit
+        working-directory: web
+        run: npm audit --omit=dev
+
       - name: Test
         working-directory: web
         run: npm test

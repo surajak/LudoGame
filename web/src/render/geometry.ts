@@ -224,8 +224,4 @@ export function tokenPlacements(state: GameState): Map<string, TokenPlacement> {
   return out;
 }
 
-export function progressOf(state: GameState, seat: Seat, token: TokenIndex): number {
-  return state.players[seat].tokens[token];
-}
-
 export { DONE, FIRST_HOME_PROGRESS, START, YARD, isInHomeColumn, isOnRing };

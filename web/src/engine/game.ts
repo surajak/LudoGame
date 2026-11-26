@@ -1,4 +1,4 @@
-import { DONE, SEAT_COUNT, TOKENS_PER_PLAYER, YARD, type Seat, type TokenIndex } from './board.ts';
+import { DONE, YARD, type Seat, type TokenIndex } from './board.ts';
 import { nextDie } from './rng.ts';
 import {
   hasWon,
@@ -149,7 +149,7 @@ function playMove(state: GameState, seat: Seat, token: TokenIndex): StepResult {
 }
 
 /** Hands the turn to the next active seat and clears per-turn scratch state. */
-export function passTurn(state: GameState): GameState {
+function passTurn(state: GameState): GameState {
   const index = state.seats.indexOf(state.turn);
   const nextSeat = state.seats[(index + 1) % state.seats.length];
   return {
@@ -159,17 +159,6 @@ export function passTurn(state: GameState): GameState {
     sixStreak: 0,
     phase: 'await-roll',
   };
-}
-
-export function assertActiveSeats(state: GameState): void {
-  if (state.seats.length < 2 || state.seats.length > SEAT_COUNT) {
-    throw new Error(`invalid seat count ${state.seats.length}`);
-  }
-  for (const seat of state.seats) {
-    if (state.players[seat].tokens.length !== TOKENS_PER_PLAYER) {
-      throw new Error(`seat ${seat} does not have ${TOKENS_PER_PLAYER} tokens`);
-    }
-  }
 }
 
 export { legalMoves, hasWon };
