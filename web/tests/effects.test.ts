@@ -53,3 +53,15 @@ test('different seeds draw different particles', () => {
   }
   assert.equal(differing, 20);
 });
+
+test('each event kind plays for its own length', () => {
+  const enter = spawnEffect('enter', 0, focus, '#d9534f', 1);
+  const home = spawnEffect('home', 0, focus, '#3f9e63', 1);
+  const win = spawnEffect('win', 0, focus, '#d9a13b', 1);
+  const capture = spawnEffect('capture', 0, focus, '#3c7dc4', 1);
+
+  assert.equal(enter.duration, 1200);
+  assert.equal(home.duration, 2000);
+  assert.equal(win.duration, 2400);
+  assert.equal(capture.duration, 2000);
+});

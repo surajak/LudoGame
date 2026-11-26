@@ -8,6 +8,7 @@
 
 import {
   DONE,
+  YARD,
   chooseCpuMove,
   createGame,
   legalMoves,
@@ -19,7 +20,7 @@ import {
   type TokenIndex,
 } from './engine/index.ts';
 import { computeLayout, renderBoard, type Layout } from './render/board.ts';
-import { drawEffects, liveEffects, spawnEffect, type Effect } from './render/effects.ts';
+import { drawEffects, liveEffects, spawnEffect, type Effect, type EffectKind } from './render/effects.ts';
 import { SEAT_COLOURS, SEAT_NAMES, tokenPlacements } from './render/geometry.ts';
 import {
   ATTENTION_BOUNCE_MS,
@@ -205,14 +206,31 @@ function apply(result: { state: GameState; events: readonly GameEvent[] }): void
 /** Queue a board-wide effect for an event that deserves one. */
 function spawnEventEffects(events: readonly GameEvent[], now: number): void {
   const placements = tokenPlacements(game);
-  for (const event of events) {
-    if (event.type !== 'moved' || event.captures.length === 0) continue;
-    const focus = placements.get(`${event.seat}:${event.token}`)?.units;
-    if (!focus) continue;
+  const queue = (
+    kind: EffectKind,
+    seat: Seat,
+    token?: TokenIndex,
+    focus = token === undefined
+      ? undefined
+      : placements.get(`${seat}:${token}`)?.units,
+  ) => {
+    if (!focus) return;
     effectSeed += 1;
-    effects.push(
-      spawnEffect('capture', now, focus, SEAT_COLOURS[event.seat], effectSeed),
-    );
+    effects.push(spawnEffect(kind, now, focus, SEAT_COLOURS[seat], effectSeed));
+  };
+
+  const won = events.some((event) => event.type === 'won');
+
+  for (const event of events) {
+    if (event.type === 'moved') {
+      // Capture first: it is the loudest, so its effect is the one noticed.
+      if (event.captures.length > 0) queue('capture', event.seat, event.token);
+      // A finishing move that also wins only plays the win effect.
+      else if (event.to === DONE && !won) queue('home', event.seat, event.token);
+      else if (event.from === YARD) queue('enter', event.seat, event.token);
+    }
+    // A win has no pawn to stand on, so the effect fills the board from the centre.
+    if (event.type === 'won') queue('win', event.seat, undefined, { x: 7, y: 7 });
   }
 }
 
@@ -536,7 +554,7 @@ function frame(time: number): void {
     // Drop what finished, then draw what is left over the board.
     const alive = liveEffects(effects, time);
     if (alive.length !== effects.length) effects.splice(0, effects.length, ...alive);
-    drawEffects(ctx, effects, layout, time);
+    if (!prefersReducedMotion) drawEffects(ctx, effects, layout, time);
   }
   requestAnimationFrame(frame);
 }
