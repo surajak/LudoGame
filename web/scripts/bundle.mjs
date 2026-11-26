@@ -43,16 +43,19 @@ const cspMeta =
   ].join('; ') +
   '">';
 
+// Replacer functions, not strings: built JS may contain "$&" sequences that
+// String.replace would otherwise expand, which would corrupt the file and the hash.
 const standalone = html
-  .replace(styleTag, `<style>\n${css}\n</style>`)
-  .replace(scriptTag, `<script type="module">${scriptBody}</script>`)
-  .replace(
-    '<meta name="color-scheme" content="dark" />',
-    `<meta name="color-scheme" content="dark" />\n    ${cspMeta}`,
-  );
+  .replace(styleTag, () => `<style>\n${css}\n</style>`)
+  .replace(scriptTag, () => `<script type="module">${scriptBody}</script>`)
+  .replace('<meta name="color-scheme" content="dark" />', () => `<meta name="color-scheme" content="dark" />\n    ${cspMeta}`);
 
 if (!standalone.includes('Content-Security-Policy')) {
   throw new Error('the CSP meta tag was not injected into the standalone file');
+}
+const written = standalone.match(/<script type="module">([\s\S]*?)<\/script>/)[1];
+if (createHash('sha256').update(written, 'utf8').digest('base64') !== scriptHash) {
+  throw new Error('the inline script does not match its CSP hash');
 }
 
 const out = join(dist, 'ludo.html');

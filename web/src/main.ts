@@ -19,6 +19,7 @@ import {
   type TokenIndex,
 } from './engine/index.ts';
 import { computeLayout, renderBoard, type Layout } from './render/board.ts';
+import { drawEffects, liveEffects, spawnEffect, type Effect } from './render/effects.ts';
 import { SEAT_COLOURS, SEAT_NAMES, tokenPlacements } from './render/geometry.ts';
 import {
   ATTENTION_BOUNCE_MS,
@@ -93,6 +94,10 @@ let repeatTimer = 0;
 let settleTimer = 0;
 /** Pending computer action; 0 when none. */
 let cpuTimer = 0;
+/** Board-wide event effects (capture, home, entry, win). */
+const effects: Effect[] = [];
+/** Monotonic seed for effect randomness, so two captures never look identical. */
+let effectSeed = Math.floor(Math.random() * 1e9);
 
 /** Per-seat dice placeholders in the empty space above and below the board. */
 const seatDies = new Map<Seat, HTMLButtonElement>();
@@ -184,6 +189,8 @@ function apply(result: { state: GameState; events: readonly GameEvent[] }): void
   legal = legalMoves(game);
   syncHud();
 
+  spawnEventEffects(result.events, performance.now());
+
   if (game.phase === 'game-over') {
     stopAttentionLoop();
     play('win');
@@ -195,6 +202,20 @@ function apply(result: { state: GameState; events: readonly GameEvent[] }): void
 }
 
 /** True while the computer seat is to act and the board is in view. */
+/** Queue a board-wide effect for an event that deserves one. */
+function spawnEventEffects(events: readonly GameEvent[], now: number): void {
+  const placements = tokenPlacements(game);
+  for (const event of events) {
+    if (event.type !== 'moved' || event.captures.length === 0) continue;
+    const focus = placements.get(`${event.seat}:${event.token}`)?.units;
+    if (!focus) continue;
+    effectSeed += 1;
+    effects.push(
+      spawnEffect('capture', now, focus, SEAT_COLOURS[event.seat], effectSeed),
+    );
+  }
+}
+
 function isCpuTurn(): boolean {
   return (
     cpuSeat !== null && game.turn === cpuSeat && game.phase !== 'game-over' && modeScreen.hidden
@@ -511,6 +532,12 @@ function frame(time: number): void {
     animate: !prefersReducedMotion,
     animated,
   });
+  if (effects.length > 0) {
+    // Drop what finished, then draw what is left over the board.
+    const alive = liveEffects(effects, time);
+    if (alive.length !== effects.length) effects.splice(0, effects.length, ...alive);
+    drawEffects(ctx, effects, layout, time);
+  }
   requestAnimationFrame(frame);
 }
 
@@ -611,6 +638,8 @@ Object.assign(globalThis, {
     move: (token: number) => moveToken(token as TokenIndex),
     /** Seat the computer plays, or null in a hotseat game. */
     cpuSeat: () => cpuSeat,
+    /** Live board-wide event effects, for scripted checks. */
+    effects: () => effects.map((effect) => ({ ...effect })),
     sizes: () => sizeVersion,
     canvasSize: () => ({ width: canvas.width, height: canvas.height, layout }),
     /** Token centres in CSS pixels, so tests can click exactly where a token is drawn. */
